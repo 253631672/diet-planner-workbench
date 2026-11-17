@@ -1,6 +1,6 @@
 # 饮食配餐工作台
 
-[![在线预览](https://img.shields.io/badge/在线预览-打开-4C8C4A)](https://253631672.github.io/diet-planner-workbench/) [![单文件](https://img.shields.io/badge/单文件-HTML-2B2B2B)](diet-planner-workbench.html) [![离线可用](https://img.shields.io/badge/离线-可用-4C8C4A)](#) [![License](https://img.shields.io/badge/license-MIT-8A6A3B)](LICENSE)
+[![在线预览](https://img.shields.io/badge/在线预览-打开-4C8C4A)](https://253631672.github.io/diet-planner-workbench/) [![单文件](https://img.shields.io/badge/单文件-HTML-2B2B2B)](diet-planner-workbench.html) [![离线可用](https://img.shields.io/badge/离线-可用-4C8C4A)](#) [![License](https://img.shields.io/badge/license-MIT-8A6A3B)](LICENSE) [![商用](https://img.shields.io/badge/商用-允许-4C8C4A)](#许可)
 
 训练日和休息日两套热量，吃一顿剩余目标自动重算。
 
@@ -64,4 +64,4 @@ LICENSE
 
 ## 许可
 
-MIT，可自由用于个人学习与二次修改，转载或商用请先联系作者。
+MIT。可自由使用、修改和商用，保留版权与许可声明即可，无需单独授权。
