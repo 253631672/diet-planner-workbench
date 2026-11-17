@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="author" content="HR科技">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>饮食配餐工作台 · 演示版</title>
+<meta name="description" content="训练日和休息日两套热量配餐：每餐推荐、食物克数换算营养、当天总量自动重算，数据存在本机。">
+<style>
+:root{
+  --bg:#F7FAF4; --bg2:#EFF6E9;
+  --card:#FFFFFF; --line:#E4EEDC; --line2:#D2E2C6;
+  --accent:#3FA34D; --accent-deep:#2E8B3C; --accent-soft:#EAF6E6;
+  --protein:#3B82C4; --carb:#E0A33E; --fat:#D9715B;
+  --ink:#27302A; --ink2:#5D6B60; --ink3:#8C9A8F;
+  --shadow:0 8px 24px rgba(40,80,40,.07);
+  --shadow-sm:0 3px 10px rgba(40,80,40,.05);
+  --r:20px; --tab:66px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","HarmonyOS Sans SC","Noto Sans SC","Microsoft YaHei",sans-serif;
+  background:linear-gradient(180deg,var(--bg) 0%,#FDFEFC 40%,var(--bg) 100%);
+  color:var(--ink); font-size:15px; line-height:1.6; min-height:100vh;-webkit-font-smoothing:antialiased;
+}
+#app{max-width:560px;margin:0 auto;min-height:100vh;padding-bottom:calc(var(--tab) + 24px);position:relative}
+.view{padding:0 16px}
+[hidden]{display:none!important}
+button{font-family:inherit;border:0;background:none;cursor:pointer;color:inherit}
+input,select{font-family:inherit;border:0;outline:0;background:none;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+svg.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+.top{position:sticky;top:0;z-index:9;padding:16px 16px 10px;background:linear-gradient(180deg,rgba(250,253,248,.97),rgba(250,253,248,.85) 70%,rgba(250,253,248,0));backdrop-filter:blur(10px)}
+.top-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand{display:flex;align-items:center;gap:9px}
+.logo{width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,var(--accent),#78C97F);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;box-shadow:0 6px 14px rgba(63,163,77,.24)}
+h1{font-size:19px;font-weight:700;letter-spacing:.3px;line-height:1.2}
+.sub{font-size:12px;color:var(--ink3);margin-top:2px}
+.icon-btn{width:36px;height:36px;border-radius:11px;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink2);box-shadow:var(--shadow-sm)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-sm);padding:16px}
+.card+.card{margin-top:12px}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px}
+.card-title{font-size:15px;font-weight:700;display:flex;align-items:center;gap:7px}
+.card-title .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.hint{font-size:12px;color:var(--ink3)}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:600;background:var(--accent-soft);color:var(--accent-deep)}
+.pill-gray{background:#F1F5EE;color:var(--ink2)}
+.pill-warn{background:#FDF2E3;color:#B87A22}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:42px;padding:0 16px;border-radius:14px;font-size:14px;font-weight:650;background:var(--ink);color:#fff}
+.btn:active{transform:scale(.97)}
+.btn-accent{background:linear-gradient(135deg,var(--accent),#6BC775);box-shadow:0 8px 18px rgba(63,163,77,.2)}
+.btn-ghost{background:#fff;color:var(--ink);border:1px solid var(--line2)}
+.btn-sm{height:32px;padding:0 11px;font-size:12.5px;border-radius:10px}
+.between{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.row{display:flex;align-items:center;gap:10px}
+.num{font-variant-numeric:tabular-nums}
+.bar{height:7px;border-radius:99px;background:#EEF3EA;overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),#7DCF86);transition:width .3s}
+.bar.p>i{background:linear-gradient(90deg,#3B82C4,#6FA9DB)}
+.bar.c>i{background:linear-gradient(90deg,#E0A33E,#F0C677)}
+.bar.f>i{background:linear-gradient(90deg,#D9715B,#EDA08D)}
+
+/* 热量卡 */
+.hero{background:linear-gradient(150deg,#2E8B3C 0%,#3FA34D 55%,#6BC775 100%);border-radius:24px;padding:18px;color:#fff;position:relative;overflow:hidden;box-shadow:0 16px 34px rgba(46,139,60,.22)}
+.hero:after{content:"";position:absolute;right:-46px;top:-56px;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.26),transparent 70%)}
+.dayswitch{display:flex;background:rgba(255,255,255,.16);border-radius:13px;padding:3px;position:relative;z-index:2;margin-bottom:14px}
+.dayswitch button{flex:1;height:36px;border-radius:10px;font-size:13px;font-weight:600;color:rgba(255,255,255,.75)}
+.dayswitch button.on{background:#fff;color:var(--accent-deep);box-shadow:0 3px 8px rgba(0,0,0,.12)}
+.hero .kcal{font-size:34px;font-weight:750;letter-spacing:-1px;line-height:1.2;position:relative;z-index:2;font-variant-numeric:tabular-nums}
+.hero .kcal small{font-size:14px;font-weight:500;color:rgba(255,255,255,.7);margin-left:4px}
+.hero .left{font-size:12.5px;color:rgba(255,255,255,.78);margin-top:2px;position:relative;z-index:2}
+.hero .barwrap{height:8px;background:rgba(255,255,255,.22);border-radius:99px;margin-top:12px;position:relative;z-index:2;overflow:hidden}
+.hero .barwrap i{display:block;height:100%;background:#fff;border-radius:99px;transition:width .35s}
+
+/* 三大营养素 */
+.macro{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.macro:last-child{margin-bottom:0}
+.macro .name{width:46px;font-size:12.5px;font-weight:650}
+.macro .vals{width:96px;text-align:right;font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.macro .bar{flex:1}
+
+/* 餐卡 */
+.meal{border:1px solid var(--line);border-radius:16px;padding:13px;margin-bottom:10px;background:#FCFEFB}
+.meal:last-child{margin-bottom:0}
+.meal-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.meal-name{font-size:14.5px;font-weight:700;display:flex;align-items:center;gap:7px}
+.meal-name .ico{width:24px;height:24px;border-radius:8px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:13px}
+.meal-kcal{font-size:12px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.meal-kcal b{color:var(--accent-deep);font-size:13px}
+.rec{margin-top:9px;display:flex;flex-wrap:wrap;gap:6px}
+.food-chip{font-size:11.5px;padding:4px 9px;border-radius:9px;background:#F2F7EE;color:var(--ink2);border:1px solid #E3EEDB}
+.food-chip b{color:var(--ink);font-weight:650}
+.rec-macro{font-size:11.5px;color:var(--ink3);margin-top:7px;display:flex;gap:10px;flex-wrap:wrap}
+.logged{margin-top:8px;border-top:1px dashed var(--line);padding-top:8px}
+.logged .ln{display:flex;justify-content:space-between;font-size:12px;color:var(--ink2);padding:3px 0}
+.meal-actions{display:flex;gap:7px;margin-top:9px}
+.meal-actions .btn{flex:1;height:34px;font-size:12.5px;border-radius:10px}
+
+/* 列表 */
+.item{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px dashed var(--line)}
+.item:last-child{border-bottom:0}
+.item .main{flex:1;min-width:0}
+.item .t1{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .t2{font-size:11px;color:var(--ink3);margin-top:1px}
+.item .val{text-align:right;font-size:12.5px;font-weight:650;font-variant-numeric:tabular-nums}
+
+.segs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.segs::-webkit-scrollbar{display:none}
+.seg{flex:none;padding:7px 12px;border-radius:99px;font-size:12.5px;font-weight:600;background:#F0F5EC;color:var(--ink2)}
+.seg.on{background:var(--ink);color:#fff}
+
+.searchbox{display:flex;align-items:center;gap:8px;background:#F4F8F0;border:1px solid var(--line);border-radius:13px;padding:0 12px;height:44px;margin-bottom:10px}
+.searchbox input{flex:1;font-size:14px}
+.searchbox svg{width:17px;height:17px;color:var(--ink3);flex:none}
+
+/* 柱状图 */
+.chart{display:flex;align-items:flex-end;gap:8px;height:118px;padding-top:6px}
+.chart .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%}
+.chart .col .cbar{width:100%;background:linear-gradient(180deg,#8CD394,#3FA34D);border-radius:7px 7px 3px 3px;margin-top:auto;position:relative}
+.chart .col .cbar.over{background:linear-gradient(180deg,#F0AF8E,#D9715B)}
+.chart .col .lbl{font-size:10px;color:var(--ink3)}
+.chart .col .kv{font-size:9.5px;color:var(--ink3);margin-top:-2px}
+
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.stat{background:#F7FBF4;border:1px solid var(--line);border-radius:14px;padding:10px}
+.stat .k{font-size:11px;color:var(--ink3)}
+.stat .v{font-size:17px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums;color:var(--accent-deep)}
+.stat .v small{font-size:11px;color:var(--ink3);font-weight:500}
+
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:center;pointer-events:none}
+.tabbar-in{pointer-events:auto;width:100%;max-width:560px;display:flex;background:rgba(255,255,255,.94);backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;border-radius:12px;color:var(--ink3);font-size:11px;font-weight:600}
+.tab.on{color:var(--accent)}
+.tab svg{width:21px;height:21px}
+
+.mask{position:fixed;inset:0;background:rgba(30,50,30,.42);z-index:30;display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:560px;background:#fff;border-radius:24px 24px 0 0;padding:18px 18px calc(20px + env(safe-area-inset-bottom));max-height:88vh;overflow:auto;animation:up .22s cubic-bezier(.22,1,.36,1)}
+@keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
+.sheet h3{font-size:16px;font-weight:700;margin-bottom:12px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;color:var(--ink3);margin-bottom:5px}
+.field input,.field select{width:100%;height:44px;background:#F4F8F0;border-radius:12px;padding:0 12px;font-size:14px;border:1px solid var(--line)}
+.field input:focus,.field select:focus{border-color:#AEDCB0;background:#fff}
+.sheet-actions{display:flex;gap:10px;margin-top:6px}
+.sheet-actions .btn{flex:1}
+.sheet-list{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:13px;margin-bottom:12px}
+.sheet-list .si{padding:10px 12px;border-bottom:1px solid #F3F7F0;display:flex;justify-content:space-between;gap:8px;font-size:13px}
+.sheet-list .si:last-child{border-bottom:0}
+.sheet-list .si b{font-weight:600}
+.sheet-list .si span{font-size:11px;color:var(--ink3);white-space:nowrap}
+.empty{text-align:center;color:var(--ink3);font-size:13px;padding:22px 0}
+.foot{padding:22px 4px 8px;text-align:center;font-size:11.5px;color:var(--ink3);line-height:1.7}
+.toast{position:fixed;left:50%;bottom:calc(var(--tab) + 22px);transform:translate(-50%,10px);background:rgba(39,48,42,.94);color:#fff;font-size:13px;padding:9px 16px;border-radius:12px;z-index:40;opacity:0;transition:.22s;pointer-events:none}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top">
+    <div class="top-row">
+      <div class="brand">
+        <span class="logo">食</span>
+        <div>
+          <h1>饮食配餐工作台</h1>
+          <div class="sub" id="todayLine">演示数据 · 保存在本机</div>
+        </div>
+      </div>
+      <div class="row" style="gap:6px">
+        <button class="icon-btn" id="btnInfo" aria-label="使用说明">
+          <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/></svg>
+        </button>
+        <button class="icon-btn" id="btnReset" aria-label="重置演示数据">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 今日 -->
+  <section class="view" id="v-today">
+    <div class="hero">
+      <div class="dayswitch" id="daySwitch">
+        <button data-day="train" class="on">训练日 · 2400 大卡</button>
+        <button data-day="rest">休息日 · 2000 大卡</button>
+      </div>
+      <div class="kcal" id="heroKcal">0<small>/ 2400 大卡</small></div>
+      <div class="left" id="heroLeft">今天还能吃 2400 大卡</div>
+      <div class="barwrap"><i id="heroBar" style="width:0%"></i></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="dot"></span>三大营养素</div>
+        <span class="pill" id="macroPill">蛋白恒定</span>
+      </div>
+      <div class="macro"><span class="name">蛋白质</span><div class="bar p"><i id="mbP" style="width:0%"></i></div><span class="vals" id="mvP">0 / 135g</span></div>
+      <div class="macro"><span class="name">碳水</span><div class="bar c"><i id="mbC" style="width:0%"></i></div><span class="vals" id="mvC">0 / 341g</span></div>
+      <div class="macro"><span class="name">脂肪</span><div class="bar f"><i id="mbF" style="width:0%"></i></div><span class="vals" id="mvF">0 / 55g</span></div>
+      <div class="hint" style="margin-top:10px">蛋白固定在 135g，热量档位主要调整碳水和脂肪。</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="dot"></span>今天的餐</div>
+        <span class="hint">点「换一套」重新搭配</span>
+      </div>
+      <div id="meals"></div>
+    </div>
+    <div class="foot">推荐按当日剩余额度生成，已录入的餐会自动扣减后面的目标</div>
+  </section>
+
+  <!-- 记录 -->
+  <section class="view" id="v-log" hidden>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="dot"></span>今日明细</div>
+        <button class="btn btn-sm btn-accent" id="btnQuickAdd">加食物</button>
+      </div>
+      <div id="todayLog"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="dot"></span>近 7 天热量</div>
+        <span class="hint" id="avgHint"></span>
+      </div>
+      <div class="chart" id="chart7"></div>
+      <div class="hint" style="margin-top:8px">红色柱子是超过当天目标的那天。</div>
+    </div>
+    <div class="foot">记录不需要精确到克，能把大致量记下来就已经有用</div>
+  </section>
+
+  <!-- 食物库 -->
+  <section class="view" id="v-db" hidden>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="dot"></span>食物营养库</div>
+        <span class="pill-gray" id="dbCount">—</span>
+      </div>
+      <div class="searchbox">
+        <svg viewBox="0 0 24 24" class="ic"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="dbSearch" placeholder="搜食物，比如 鸡胸、米饭、拉面">
+      </div>
+      <div class="segs" id="dbCats" style="margin-bottom:10px"></div>
+      <div id="dbList"></div>
+    </div>
+    <div class="foot">营养值来自《中国食物成分表（标准版）》与品牌公开值，成品餐为拆解估算，按每 100g 标注</div>
+  </section>
+
+  <!-- 我的 -->
+  <section class="view" id="v-me" hidden>
+    <div class="card">
+      <div class="card-head"><div class="card-title"><span class="dot"></span>身体与目标</div></div>
+      <div class="grid3">
+        <div class="stat"><div class="k">体重</div><div class="v" id="meWeight">70.8<small>kg</small></div></div>
+        <div class="stat"><div class="k">目标热量</div><div class="v" id="meKcal">2400<small>kcal</small></div></div>
+        <div class="stat"><div class="k">记录天数</div><div class="v" id="meDays">7</div></div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="field" style="margin:0"><label>体重（kg）</label><input id="weightInput" type="number" step="0.1" style="height:42px;background:#F4F8F0;border-radius:12px;padding:0 12px;border:1px solid var(--line);width:100%"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div class="card-title"><span class="dot"></span>数据管理</div></div>
+      <div class="row" style="gap:9px">
+        <button class="btn btn-ghost" id="btnExport" style="flex:1">导出JSON</button>
+        <button class="btn btn-ghost" id="btnImport" style="flex:1">导入JSON</button>
+      </div>
+      <div style="margin-top:9px"><button class="btn btn-ghost" id="btnReset2" style="width:100%">重置为演示数据</button></div>
+      <input type="file" id="fileInput" accept=".json" hidden>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div class="card-title"><span class="dot"></span>关于</div></div>
+      <p style="font-size:13.5px;color:var(--ink2);line-height:1.85">
+        训练日和休息日两套热量，每餐给一份搭配，吃了什么记进去，剩余热量和营养素进度自动重算。
+        食物库收录 600 多种常见食物和外卖成品，按每 100g 换算，克数是自己填的，不猜。
+      </p>
+      <p style="font-size:12px;color:var(--ink3);margin-top:10px">版本 v1.0 · 演示数据 · 作者 HR科技</p>
+      <p style="font-size:12px;color:var(--ink3);margin-top:6px">本程序不联网、不发任何请求、不读取你的账户或文件。演示数据全部随机生成，不含任何真实个人信息。</p>
+    </div>
+  </section>
+</div>
+
+<div class="tabbar">
+  <div class="tabbar-in">
+    <button class="tab on" data-tab="today">
+      <svg class="ic" viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M6 8h12M8 4h8"/><circle cx="12" cy="17" r="3"/></svg>今日
+    </button>
+    <button class="tab" data-tab="log">
+      <svg class="ic" viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>记录
+    </button>
+    <button class="tab" data-tab="db">
+      <svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>食物库
+    </button>
+    <button class="tab" data-tab="me">
+      <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>我的
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>const FOOD_DB=[{"n":"大米(生)","c":"主食","k":351.0,"p":7.5,"ch":79.0,"f":0.5,"s":"—","src":"中国食物成分表"},{"n":"米饭(蒸)","c":"主食","k":116.0,"p":2.6,"ch":25.9,"f":0.3,"s":"1碗≈200g","src":"中国食物成分表"},{"n":"糯米饭","c":"主食","k":115.0,"p":2.6,"ch":26.3,"f":0.3,"s":"1碗≈200g","src":"中国食物成分表"},{"n":"白面条(煮)","c":"主食","k":110.0,"p":3.5,"ch":22.0,"f":0.4,"s":"1碗≈250g","src":"中国食物成分表"},{"n":"荞麦面(煮)","c":"主食","k":99.0,"p":4.6,"ch":20.0,"f":0.7,"s":"1碗≈250g","src":"中国食物成分表"},{"n":"馒头","c":"主食","k":223.0,"p":7.0,"ch":47.0,"f":1.1,"s":"1个≈100g","src":"中国食物成分表"},{"n":"花卷","c":"主食","k":217.0,"p":6.4,"ch":45.6,"f":1.0,"s":"1个≈80g","src":"中国食物成分表"},{"n":"全麦面包","c":"主食","k":247.0,"p":11.0,"ch":50.0,"f":2.0,"s":"1片≈35g","src":"参考值"},{"n":"全麦吐司","c":"主食","k":90.0,"p":4.0,"ch":16.0,"f":1.5,"s":"1片≈35g","src":"参考值"},{"n":"白吐司","c":"主食","k":260.0,"p":8.0,"ch":50.0,"f":4.0,"s":"1片≈35g","src":"参考值"},{"n":"燕麦片(干)","c":"主食","k":379.0,"p":13.5,"ch":67.0,"f":6.7,"s":"50g冲1碗","src":"中国食物成分表"},{"n":"燕麦粥","c":"主食","k":68.0,"p":2.4,"ch":12.0,"f":1.4,"s":"1碗≈250g","src":"参考值"},{"n":"小米粥","c":"主食","k":46.0,"p":1.4,"ch":9.7,"f":0.7,"s":"1碗≈250g","src":"中国食物成分表"},{"n":"白粥","c":"主食","k":130.0,"p":3.0,"ch":28.0,"f":0.5,"s":"1碗≈300g","src":"参考值"},{"n":"皮蛋瘦肉粥","c":"主食","k":200.0,"p":8.0,"ch":30.0,"f":6.0,"s":"1碗","src":"参考值"},{"n":"八宝粥","c":"主食","k":240.0,"p":6.0,"ch":45.0,"f":4.0,"s":"1碗","src":"参考值"},{"n":"玉米(鲜)","c":"主食","k":112.0,"p":4.0,"ch":22.8,"f":1.2,"s":"1根≈200g","src":"中国食物成分表"},{"n":"甜玉米","c":"主食","k":96.0,"p":3.2,"ch":21.0,"f":1.0,"s":"1根≈200g","src":"参考值"},{"n":"糯玉米","c":"主食","k":180.0,"p":4.5,"ch":32.0,"f":2.5,"s":"1根≈200g","src":"参考值"},{"n":"红薯","c":"主食","k":99.0,"p":1.1,"ch":24.7,"f":0.2,"s":"1个≈200g","src":"中国食物成分表"},{"n":"紫薯","c":"主食","k":106.0,"p":1.8,"ch":25.0,"f":0.2,"s":"1个≈200g","src":"参考值"},{"n":"土豆","c":"主食","k":77.0,"p":2.0,"ch":17.2,"f":0.2,"s":"1个≈150g","src":"中国食物成分表"},{"n":"芋头","c":"主食","k":79.0,"p":2.2,"ch":18.1,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"山药","c":"主食","k":57.0,"p":1.9,"ch":12.4,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"莲藕","c":"主食","k":73.0,"p":2.6,"ch":16.4,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"糙米(生)","c":"主食","k":348.0,"p":7.7,"ch":76.0,"f":2.2,"s":"—","src":"中国食物成分表"},{"n":"玉米面","c":"主食","k":355.0,"p":8.1,"ch":75.4,"f":3.3,"s":"—","src":"中国食物成分表"},{"n":"藜麦(熟)","c":"主食","k":120.0,"p":4.4,"ch":21.3,"f":1.9,"s":"1碗≈200g","src":"参考值"},{"n":"意大利面(煮)","c":"主食","k":158.0,"p":5.8,"ch":30.9,"f":0.9,"s":"1盘≈250g","src":"参考值"},{"n":"河粉(湿)","c":"主食","k":140.0,"p":2.5,"ch":30.0,"f":0.3,"s":"1碗≈300g","src":"参考值"},{"n":"米粉(干)","c":"主食","k":356.0,"p":7.4,"ch":80.0,"f":0.5,"s":"—","src":"中国食物成分表"},{"n":"米线(煮)","c":"主食","k":100.0,"p":2.0,"ch":22.0,"f":0.3,"s":"1碗≈300g","src":"参考值"},{"n":"方便面(面饼)","c":"主食","k":470.0,"p":9.0,"ch":62.0,"f":20.0,"s":"1块面饼","src":"参考值"},{"n":"猪肉(瘦)","c":"肉禽","k":143.0,"p":20.3,"ch":1.5,"f":6.2,"s":"—","src":"中国食物成分表"},{"n":"猪里脊","c":"肉禽","k":155.0,"p":20.2,"ch":0.7,"f":7.9,"s":"—","src":"中国食物成分表"},{"n":"猪五花肉","c":"肉禽","k":395.0,"p":7.7,"ch":0.0,"f":37.0,"s":"—","src":"中国食物成分表"},{"n":"猪排骨","c":"肉禽","k":264.0,"p":16.0,"ch":1.0,"f":20.0,"s":"—","src":"参考值"},{"n":"猪蹄","c":"肉禽","k":260.0,"p":22.0,"ch":0.0,"f":18.0,"s":"—","src":"参考值"},{"n":"猪肝","c":"肉禽","k":129.0,"p":19.3,"ch":5.0,"f":3.5,"s":"—","src":"中国食物成分表"},{"n":"猪肚","c":"肉禽","k":110.0,"p":15.0,"ch":0.5,"f":5.0,"s":"—","src":"参考值"},{"n":"火腿","c":"肉禽","k":114.0,"p":16.0,"ch":2.8,"f":3.5,"s":"—","src":"中国食物成分表"},{"n":"培根","c":"肉禽","k":393.0,"p":13.0,"ch":1.5,"f":37.3,"s":"—","src":"中国食物成分表"},{"n":"牛肉(瘦)","c":"肉禽","k":106.0,"p":20.2,"ch":1.2,"f":2.3,"s":"—","src":"中国食物成分表"},{"n":"牛腱子(熟)","c":"肉禽","k":246.0,"p":31.0,"ch":3.6,"f":11.9,"s":"—","src":"参考值"},{"n":"牛肉(肥瘦)","c":"肉禽","k":125.0,"p":19.9,"ch":2.0,"f":4.2,"s":"—","src":"中国食物成分表"},{"n":"牛肚","c":"肉禽","k":72.0,"p":14.5,"ch":0.0,"f":3.7,"s":"—","src":"中国食物成分表"},{"n":"牛肉干","c":"肉禽","k":550.0,"p":45.0,"ch":24.0,"f":22.0,"s":"—","src":"参考值"},{"n":"羊肉(瘦)","c":"肉禽","k":118.0,"p":20.5,"ch":0.2,"f":3.9,"s":"—","src":"中国食物成分表"},{"n":"羊肉(肥瘦)","c":"肉禽","k":203.0,"p":19.0,"ch":0.0,"f":14.1,"s":"—","src":"中国食物成分表"},{"n":"鸡胸肉(生)","c":"肉禽","k":133.0,"p":19.4,"ch":0.0,"f":5.0,"s":"—","src":"中国食物成分表"},{"n":"鸡胸肉(熟)","c":"肉禽","k":165.0,"p":31.0,"ch":0.0,"f":3.6,"s":"1块≈150g","src":"中国食物成分表"},{"n":"鸡腿(带皮生)","c":"肉禽","k":181.0,"p":16.0,"ch":0.0,"f":13.0,"s":"—","src":"中国食物成分表"},{"n":"鸡腿(去皮熟)","c":"肉禽","k":160.0,"p":24.0,"ch":0.0,"f":7.0,"s":"1个≈150g","src":"中国食物成分表"},{"n":"鸡翅(生)","c":"肉禽","k":194.0,"p":17.4,"ch":4.6,"f":11.8,"s":"1个≈50g","src":"中国食物成分表"},{"n":"鸡翅中(烤)","c":"肉禽","k":240.0,"p":18.0,"ch":5.0,"f":16.0,"s":"1个≈40g","src":"参考值"},{"n":"鸡爪","c":"肉禽","k":254.0,"p":23.9,"ch":2.7,"f":16.4,"s":"1个≈30g","src":"中国食物成分表"},{"n":"鸡肝","c":"肉禽","k":121.0,"p":16.6,"ch":2.8,"f":4.8,"s":"—","src":"中国食物成分表"},{"n":"鸭肉(生)","c":"肉禽","k":240.0,"p":15.5,"ch":0.2,"f":19.7,"s":"—","src":"中国食物成分表"},{"n":"鸭胸(生)","c":"肉禽","k":128.0,"p":18.0,"ch":0.0,"f":6.0,"s":"—","src":"参考值"},{"n":"鸭腿(去皮熟)","c":"肉禽","k":200.0,"p":25.0,"ch":0.0,"f":10.0,"s":"1个≈180g","src":"中国食物成分表"},{"n":"鸭脖","c":"肉禽","k":180.0,"p":20.0,"ch":2.0,"f":10.0,"s":"—","src":"参考值"},{"n":"鹅肉","c":"肉禽","k":240.0,"p":17.9,"ch":0.0,"f":19.9,"s":"—","src":"中国食物成分表"},{"n":"鸽子","c":"肉禽","k":201.0,"p":16.5,"ch":1.7,"f":14.2,"s":"—","src":"中国食物成分表"},{"n":"火鸡肉(熟)","c":"肉禽","k":189.0,"p":29.0,"ch":0.0,"f":7.0,"s":"—","src":"参考值"},{"n":"即食鸡胸(100g)","c":"肉禽","k":120.0,"p":24.0,"ch":3.0,"f":2.0,"s":"1袋100g","src":"参考值"},{"n":"草鱼","c":"水产","k":113.0,"p":16.6,"ch":0.0,"f":5.2,"s":"—","src":"中国食物成分表"},{"n":"鲤鱼","c":"水产","k":109.0,"p":17.7,"ch":0.3,"f":4.1,"s":"—","src":"中国食物成分表"},{"n":"鲈鱼","c":"水产","k":105.0,"p":18.6,"ch":0.0,"f":3.4,"s":"—","src":"中国食物成分表"},{"n":"带鱼","c":"水产","k":127.0,"p":17.7,"ch":3.1,"f":4.9,"s":"—","src":"中国食物成分表"},{"n":"三文鱼","c":"水产","k":139.0,"p":17.2,"ch":0.0,"f":7.8,"s":"—","src":"中国食物成分表"},{"n":"金枪鱼(罐头水浸)","c":"水产","k":116.0,"p":25.5,"ch":0.0,"f":1.4,"s":"—","src":"参考值"},{"n":"鲅鱼","c":"水产","k":115.0,"p":19.3,"ch":0.1,"f":3.8,"s":"—","src":"中国食物成分表"},{"n":"鳕鱼","c":"水产","k":88.0,"p":20.4,"ch":0.5,"f":0.5,"s":"—","src":"中国食物成分表"},{"n":"虾","c":"水产","k":93.0,"p":18.6,"ch":2.8,"f":0.8,"s":"10只≈100g","src":"中国食物成分表"},{"n":"基围虾","c":"水产","k":101.0,"p":18.2,"ch":0.0,"f":1.4,"s":"—","src":"中国食物成分表"},{"n":"小龙虾","c":"水产","k":93.0,"p":18.9,"ch":1.0,"f":1.1,"s":"10只≈150g","src":"参考值"},{"n":"螃蟹","c":"水产","k":95.0,"p":13.8,"ch":4.7,"f":2.6,"s":"1只≈150g","src":"中国食物成分表"},{"n":"鱿鱼","c":"水产","k":84.0,"p":15.0,"ch":0.0,"f":1.0,"s":"—","src":"中国食物成分表"},{"n":"蛤蜊","c":"水产","k":62.0,"p":10.8,"ch":2.4,"f":1.1,"s":"—","src":"中国食物成分表"},{"n":"牡蛎","c":"水产","k":73.0,"p":5.3,"ch":8.2,"f":2.1,"s":"—","src":"中国食物成分表"},{"n":"扇贝","c":"水产","k":60.0,"p":11.1,"ch":2.6,"f":0.6,"s":"—","src":"中国食物成分表"},{"n":"海参","c":"水产","k":78.0,"p":16.5,"ch":2.5,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"鱼丸","c":"水产","k":102.0,"p":11.5,"ch":5.0,"f":4.5,"s":"—","src":"参考值"},{"n":"虾滑","c":"水产","k":110.0,"p":12.0,"ch":3.0,"f":5.0,"s":"—","src":"参考值"},{"n":"鸡蛋","c":"蛋类","k":144.0,"p":13.3,"ch":2.8,"f":8.8,"s":"1个≈50g(可食)","src":"中国食物成分表"},{"n":"鸭蛋","c":"蛋类","k":180.0,"p":12.6,"ch":3.1,"f":13.0,"s":"1个≈70g","src":"中国食物成分表"},{"n":"鹅蛋","c":"蛋类","k":196.0,"p":11.1,"ch":2.8,"f":15.6,"s":"1个≈160g","src":"中国食物成分表"},{"n":"鹌鹑蛋","c":"蛋类","k":160.0,"p":12.8,"ch":2.1,"f":11.1,"s":"1个≈10g","src":"中国食物成分表"},{"n":"咸鸭蛋","c":"蛋类","k":190.0,"p":12.7,"ch":6.3,"f":12.7,"s":"1个≈60g","src":"参考值"},{"n":"皮蛋","c":"蛋类","k":171.0,"p":14.2,"ch":4.5,"f":10.7,"s":"1个≈60g","src":"中国食物成分表"},{"n":"茶叶蛋","c":"蛋类","k":140.0,"p":12.0,"ch":3.0,"f":8.0,"s":"1个≈55g","src":"参考值"},{"n":"大白菜","c":"蔬菜","k":18.0,"p":1.5,"ch":3.2,"f":0.1,"s":"—","src":"中国食物成分表"},{"n":"小白菜","c":"蔬菜","k":15.0,"p":1.5,"ch":2.7,"f":0.3,"s":"—","src":"中国食物成分表"},{"n":"菠菜","c":"蔬菜","k":28.0,"p":2.6,"ch":4.5,"f":0.3,"s":"—","src":"中国食物成分表"},{"n":"油菜","c":"蔬菜","k":23.0,"p":1.8,"ch":3.8,"f":0.5,"s":"—","src":"中国食物成分表"},{"n":"生菜","c":"蔬菜","k":15.0,"p":1.3,"ch":2.0,"f":0.3,"s":"—","src":"中国食物成分表"},{"n":"芹菜","c":"蔬菜","k":17.0,"p":1.2,"ch":3.3,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"韭菜","c":"蔬菜","k":26.0,"p":2.4,"ch":4.6,"f":0.4,"s":"—","src":"中国食物成分表"},{"n":"空心菜","c":"蔬菜","k":20.0,"p":2.2,"ch":3.6,"f":0.3,"s":"—","src":"中国食物成分表"},{"n":"苋菜","c":"蔬菜","k":25.0,"p":2.8,"ch":4.1,"f":0.3,"s":"—","src":"中国食物成分表"},{"n":"茼蒿","c":"蔬菜","k":21.0,"p":1.9,"ch":3.9,"f":0.3,"s":"—","src":"中国食物成分表"},{"n":"油麦菜","c":"蔬菜","k":15.0,"p":1.4,"ch":2.1,"f":0.4,"s":"—","src":"中国食物成分表"},{"n":"西兰花(生)","c":"蔬菜","k":36.0,"p":4.1,"ch":4.3,"f":0.6,"s":"—","src":"中国食物成分表"},{"n":"西兰花(熟)","c":"蔬菜","k":35.0,"p":2.4,"ch":5.0,"f":0.4,"s":"—","src":"中国食物成分表"},{"n":"菜花","c":"蔬菜","k":24.0,"p":2.1,"ch":4.6,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"黄瓜","c":"蔬菜","k":16.0,"p":0.8,"ch":2.9,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"番茄","c":"蔬菜","k":20.0,"p":0.9,"ch":4.0,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"茄子","c":"蔬菜","k":23.0,"p":1.1,"ch":4.9,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"青椒","c":"蔬菜","k":22.0,"p":1.4,"ch":5.4,"f":0.3,"s":"—","src":"中国食物成分表"},{"n":"红椒","c":"蔬菜","k":31.0,"p":1.3,"ch":6.9,"f":0.3,"s":"—","src":"中国食物成分表"},{"n":"胡萝卜","c":"蔬菜","k":39.0,"p":1.0,"ch":8.8,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"白萝卜","c":"蔬菜","k":21.0,"p":0.9,"ch":5.0,"f":0.1,"s":"—","src":"中国食物成分表"},{"n":"南瓜","c":"蔬菜","k":23.0,"p":0.7,"ch":5.3,"f":0.1,"s":"—","src":"中国食物成分表"},{"n":"冬瓜","c":"蔬菜","k":12.0,"p":0.4,"ch":2.6,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"丝瓜","c":"蔬菜","k":20.0,"p":1.0,"ch":4.2,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"苦瓜","c":"蔬菜","k":22.0,"p":1.0,"ch":4.9,"f":0.1,"s":"—","src":"中国食物成分表"},{"n":"西葫芦","c":"蔬菜","k":19.0,"p":0.8,"ch":3.8,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"洋葱","c":"蔬菜","k":40.0,"p":1.1,"ch":9.0,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"大蒜","c":"蔬菜","k":128.0,"p":4.5,"ch":26.5,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"姜","c":"蔬菜","k":46.0,"p":1.3,"ch":10.3,"f":0.6,"s":"—","src":"中国食物成分表"},{"n":"大葱","c":"蔬菜","k":33.0,"p":1.7,"ch":6.5,"f":0.3,"s":"—","src":"中国食物成分表"},{"n":"香菜","c":"蔬菜","k":33.0,"p":2.0,"ch":6.6,"f":0.6,"s":"—","src":"中国食物成分表"},{"n":"豆角","c":"蔬菜","k":30.0,"p":2.5,"ch":5.7,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"豇豆","c":"蔬菜","k":33.0,"p":2.7,"ch":6.7,"f":0.4,"s":"—","src":"中国食物成分表"},{"n":"四季豆","c":"蔬菜","k":31.0,"p":2.0,"ch":5.7,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"荷兰豆","c":"蔬菜","k":30.0,"p":2.5,"ch":4.9,"f":0.3,"s":"—","src":"中国食物成分表"},{"n":"毛豆","c":"蔬菜","k":131.0,"p":13.1,"ch":10.5,"f":5.0,"s":"—","src":"中国食物成分表"},{"n":"豌豆","c":"蔬菜","k":105.0,"p":7.4,"ch":21.2,"f":0.3,"s":"—","src":"中国食物成分表"},{"n":"黄豆芽","c":"蔬菜","k":44.0,"p":4.5,"ch":4.5,"f":1.6,"s":"—","src":"中国食物成分表"},{"n":"绿豆芽","c":"蔬菜","k":18.0,"p":2.1,"ch":2.9,"f":0.1,"s":"—","src":"中国食物成分表"},{"n":"香菇(鲜)","c":"蔬菜","k":26.0,"p":2.2,"ch":5.2,"f":0.3,"s":"—","src":"中国食物成分表"},{"n":"香菇(干)","c":"蔬菜","k":258.0,"p":20.0,"ch":61.9,"f":1.2,"s":"—","src":"中国食物成分表"},{"n":"金针菇","c":"蔬菜","k":32.0,"p":2.4,"ch":6.0,"f":0.4,"s":"—","src":"中国食物成分表"},{"n":"杏鲍菇","c":"蔬菜","k":35.0,"p":1.3,"ch":8.3,"f":0.1,"s":"—","src":"中国食物成分表"},{"n":"平菇","c":"蔬菜","k":24.0,"p":1.9,"ch":4.6,"f":0.3,"s":"—","src":"中国食物成分表"},{"n":"木耳(水发)","c":"蔬菜","k":27.0,"p":1.5,"ch":6.0,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"银耳(干)","c":"蔬菜","k":200.0,"p":10.0,"ch":67.3,"f":1.4,"s":"—","src":"中国食物成分表"},{"n":"海带(鲜)","c":"蔬菜","k":13.0,"p":1.2,"ch":2.1,"f":0.1,"s":"—","src":"中国食物成分表"},{"n":"紫菜(干)","c":"蔬菜","k":250.0,"p":26.7,"ch":44.1,"f":1.1,"s":"—","src":"中国食物成分表"},{"n":"芦笋","c":"蔬菜","k":20.0,"p":2.6,"ch":3.3,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"秋葵","c":"蔬菜","k":37.0,"p":2.0,"ch":7.1,"f":0.1,"s":"—","src":"中国食物成分表"},{"n":"娃娃菜","c":"蔬菜","k":13.0,"p":1.5,"ch":2.4,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"芥蓝","c":"蔬菜","k":25.0,"p":2.8,"ch":3.8,"f":0.4,"s":"—","src":"中国食物成分表"},{"n":"紫甘蓝","c":"蔬菜","k":25.0,"p":1.4,"ch":5.0,"f":0.2,"s":"—","src":"中国食物成分表"},{"n":"豆腐(北)","c":"豆制品","k":98.0,"p":12.2,"ch":2.0,"f":4.8,"s":"—","src":"中国食物成分表"},{"n":"豆腐(南)","c":"豆制品","k":87.0,"p":6.2,"ch":3.4,"f":2.5,"s":"—","src":"中国食物成分表"},{"n":"豆腐干","c":"豆制品","k":142.0,"p":16.2,"ch":5.8,"f":3.6,"s":"—","src":"中国食物成分表"},{"n":"香干","c":"豆制品","k":140.0,"p":16.2,"ch":5.8,"f":3.6,"s":"—","src":"参考值"},{"n":"腐竹","c":"豆制品","k":461.0,"p":44.6,"ch":22.3,"f":21.7,"s":"—","src":"中国食物成分表"},{"n":"豆皮","c":"豆制品","k":350.0,"p":44.0,"ch":18.3,"f":13.1,"s":"—","src":"中国食物成分表"},{"n":"豆腐乳","c":"豆制品","k":133.0,"p":12.0,"ch":5.7,"f":8.1,"s":"—","src":"参考值"},{"n":"素鸡","c":"豆制品","k":192.0,"p":17.5,"ch":4.2,"f":13.2,"s":"—","src":"中国食物成分表"},{"n":"油豆腐","c":"豆制品","k":244.0,"p":17.0,"ch":4.9,"f":17.6,"s":"—","src":"中国食物成分表"},{"n":"黄豆(干)","c":"豆制品","k":359.0,"p":35.0,"ch":34.2,"f":16.0,"s":"—","src":"中国食物成分表"},{"n":"黑豆(干)","c":"豆制品","k":401.0,"p":36.1,"ch":33.6,"f":15.9,"s":"—","src":"中国食物成分表"},{"n":"绿豆(干)","c":"豆制品","k":329.0,"p":21.6,"ch":62.0,"f":0.8,"s":"—","src":"中国食物成分表"},{"n":"红豆(干)","c":"豆制品","k":324.0,"p":20.2,"ch":63.4,"f":0.6,"s":"—","src":"中国食物成分表"},{"n":"豆浆(无糖)","c":"饮品","k":31.0,"p":3.0,"ch":1.2,"f":1.6,"s":"1杯250ml","src":"中国食物成分表"},{"n":"豆浆(甜)","c":"饮品","k":50.0,"p":2.5,"ch":8.0,"f":1.5,"s":"1杯250ml","src":"参考值"},{"n":"豆奶","c":"饮品","k":45.0,"p":2.5,"ch":6.0,"f":1.5,"s":"1盒250ml","src":"参考值"},{"n":"燕麦奶","c":"饮品","k":47.0,"p":1.0,"ch":7.0,"f":1.5,"s":"1杯250ml","src":"参考值"},{"n":"牛奶(全脂)","c":"奶制品","k":65.0,"p":3.2,"ch":4.9,"f":3.6,"s":"1盒250ml","src":"中国食物成分表(用户忌牛奶)"},{"n":"脱脂牛奶","c":"奶制品","k":34.0,"p":3.4,"ch":4.9,"f":0.2,"s":"1盒250ml","src":"参考值(用户忌牛奶)"},{"n":"酸奶(原味)","c":"奶制品","k":72.0,"p":2.5,"ch":9.3,"f":2.7,"s":"1杯100g","src":"参考值(用户忌牛奶)"},{"n":"无糖酸奶","c":"奶制品","k":62.0,"p":3.5,"ch":5.0,"f":2.5,"s":"1杯100g","src":"参考值(用户忌牛奶)"},{"n":"奶酪","c":"奶制品","k":328.0,"p":25.7,"ch":3.5,"f":23.5,"s":"1片≈20g","src":"参考值(用户忌牛奶)"},{"n":"奶粉","c":"奶制品","k":478.0,"p":20.0,"ch":51.7,"f":21.2,"s":"1勺≈30g","src":"参考值(用户忌牛奶)"},{"n":"苹果","c":"水果","k":53.0,"p":0.4,"ch":13.8,"f":0.2,"s":"1个≈200g","src":"中国食物成分表"},{"n":"香蕉","c":"水果","k":93.0,"p":1.4,"ch":22.0,"f":0.2,"s":"1根≈110g","src":"中国食物成分表"},{"n":"橙子","c":"水果","k":48.0,"p":0.8,"ch":11.1,"f":0.2,"s":"1个≈150g","src":"中国食物成分表"},{"n":"橘子","c":"水果","k":44.0,"p":0.8,"ch":10.2,"f":0.1,"s":"1个≈100g","src":"中国食物成分表"},{"n":"梨","c":"水果","k":51.0,"p":0.3,"ch":13.1,"f":0.1,"s":"1个≈200g","src":"中国食物成分表"},{"n":"葡萄","c":"水果","k":45.0,"p":0.4,"ch":10.3,"f":0.3,"s":"10粒≈100g","src":"中国食物成分表"},{"n":"西瓜","c":"水果","k":26.0,"p":0.6,"ch":6.8,"f":0.1,"s":"1块≈200g","src":"中国食物成分表"},{"n":"哈密瓜","c":"水果","k":34.0,"p":0.5,"ch":8.2,"f":0.1,"s":"—","src":"中国食物成分表"},{"n":"桃子","c":"水果","k":42.0,"p":0.6,"ch":10.1,"f":0.2,"s":"1个≈150g","src":"中国食物成分表"},{"n":"李子","c":"水果","k":38.0,"p":0.6,"ch":8.7,"f":0.2,"s":"1个≈50g","src":"中国食物成分表"},{"n":"樱桃","c":"水果","k":46.0,"p":1.1,"ch":10.2,"f":0.2,"s":"10粒≈50g","src":"中国食物成分表"},{"n":"草莓","c":"水果","k":32.0,"p":1.0,"ch":7.1,"f":0.2,"s":"10颗≈150g","src":"中国食物成分表"},{"n":"蓝莓","c":"水果","k":57.0,"p":0.7,"ch":14.5,"f":0.3,"s":"1盒≈125g","src":"参考值"},{"n":"猕猴桃","c":"水果","k":61.0,"p":0.8,"ch":14.5,"f":0.6,"s":"1个≈100g","src":"中国食物成分表"},{"n":"火龙果","c":"水果","k":55.0,"p":1.1,"ch":13.3,"f":0.2,"s":"1个≈300g","src":"中国食物成分表"},{"n":"芒果","c":"水果","k":35.0,"p":0.6,"ch":8.3,"f":0.2,"s":"1个≈200g","src":"中国食物成分表"},{"n":"菠萝","c":"水果","k":44.0,"p":0.5,"ch":10.8,"f":0.1,"s":"1/4个≈250g","src":"中国食物成分表"},{"n":"木瓜","c":"水果","k":27.0,"p":0.4,"ch":7.0,"f":0.1,"s":"—","src":"中国食物成分表"},{"n":"榴莲","c":"水果","k":147.0,"p":2.6,"ch":28.3,"f":3.3,"s":"1瓣≈100g","src":"中国食物成分表"},{"n":"荔枝","c":"水果","k":71.0,"p":0.9,"ch":16.6,"f":0.2,"s":"5颗≈50g","src":"中国食物成分表"},{"n":"龙眼","c":"水果","k":71.0,"p":1.2,"ch":16.6,"f":0.1,"s":"10颗≈50g","src":"中国食物成分表"},{"n":"山竹","c":"水果","k":72.0,"p":0.4,"ch":18.0,"f":0.4,"s":"1个≈50g","src":"参考值"},{"n":"柚子","c":"水果","k":42.0,"p":0.8,"ch":9.5,"f":0.2,"s":"2瓣≈100g","src":"中国食物成分表"},{"n":"柠檬","c":"水果","k":37.0,"p":1.1,"ch":6.2,"f":1.2,"s":"—","src":"中国食物成分表"},{"n":"石榴","c":"水果","k":63.0,"p":1.4,"ch":13.9,"f":0.2,"s":"1/2个≈150g","src":"中国食物成分表"},{"n":"柿子","c":"水果","k":74.0,"p":0.4,"ch":18.5,"f":0.1,"s":"1个≈100g","src":"中国食物成分表"},{"n":"椰子肉","c":"水果","k":241.0,"p":4.0,"ch":31.3,"f":12.1,"s":"—","src":"中国食物成分表"},{"n":"牛油果","c":"水果","k":161.0,"p":2.0,"ch":7.4,"f":15.3,"s":"1/2个≈75g","src":"中国食物成分表"},{"n":"枣(鲜)","c":"水果","k":122.0,"p":1.1,"ch":30.5,"f":0.3,"s":"—","src":"中国食物成分表"},{"n":"红枣(干)","c":"水果","k":264.0,"p":3.2,"ch":67.8,"f":0.5,"s":"—","src":"中国食物成分表"},{"n":"葡萄干","c":"水果","k":341.0,"p":2.5,"ch":83.4,"f":0.4,"s":"—","src":"中国食物成分表"},{"n":"无花果","c":"水果","k":65.0,"p":1.5,"ch":16.0,"f":0.1,"s":"—","src":"参考值"},{"n":"桑葚","c":"水果","k":57.0,"p":1.7,"ch":13.8,"f":0.4,"s":"—","src":"参考值"},{"n":"核桃","c":"坚果","k":646.0,"p":14.9,"ch":19.1,"f":58.8,"s":"2个≈20g","src":"中国食物成分表"},{"n":"杏仁","c":"坚果","k":578.0,"p":22.5,"ch":23.9,"f":45.4,"s":"10粒≈15g","src":"中国食物成分表"},{"n":"腰果","c":"坚果","k":559.0,"p":17.3,"ch":41.6,"f":36.7,"s":"10粒≈15g","src":"中国食物成分表"},{"n":"开心果","c":"坚果","k":560.0,"p":20.0,"ch":28.0,"f":45.0,"s":"20粒≈15g","src":"参考值"},{"n":"花生仁(生)","c":"坚果","k":574.0,"p":24.1,"ch":21.7,"f":44.3,"s":"—","src":"中国食物成分表"},{"n":"瓜子(葵花)","c":"坚果","k":606.0,"p":22.6,"ch":16.7,"f":52.8,"s":"一把≈20g","src":"中国食物成分表"},{"n":"南瓜子","c":"坚果","k":566.0,"p":33.0,"ch":4.9,"f":46.1,"s":"一把≈20g","src":"中国食物成分表"},{"n":"松子","c":"坚果","k":698.0,"p":13.4,"ch":12.4,"f":70.6,"s":"一把≈20g","src":"中国食物成分表"},{"n":"榛子","c":"坚果","k":585.0,"p":14.4,"ch":19.9,"f":52.3,"s":"10粒≈15g","src":"中国食物成分表"},{"n":"栗子","c":"坚果","k":189.0,"p":4.2,"ch":42.2,"f":0.7,"s":"5颗≈40g","src":"中国食物成分表"},{"n":"夏威夷果","c":"坚果","k":718.0,"p":7.9,"ch":13.8,"f":75.8,"s":"5颗≈15g","src":"参考值"},{"n":"黑芝麻","c":"坚果","k":559.0,"p":19.1,"ch":24.0,"f":46.1,"s":"—","src":"中国食物成分表"},{"n":"奇亚籽","c":"坚果","k":486.0,"p":16.5,"ch":42.0,"f":30.7,"s":"1勺≈10g","src":"参考值"},{"n":"亚麻籽","c":"坚果","k":534.0,"p":18.3,"ch":28.9,"f":42.2,"s":"—","src":"参考值"},{"n":"巴旦木","c":"坚果","k":578.0,"p":21.2,"ch":23.9,"f":49.4,"s":"10粒≈15g","src":"参考值"},{"n":"可乐","c":"饮品","k":43.0,"p":0.0,"ch":10.6,"f":0.0,"s":"1罐330ml","src":"中国食物成分表"},{"n":"雪碧","c":"饮品","k":41.0,"p":0.0,"ch":10.1,"f":0.0,"s":"1罐330ml","src":"中国食物成分表"},{"n":"橙汁","c":"饮品","k":45.0,"p":0.7,"ch":10.4,"f":0.1,"s":"1杯250ml","src":"参考值"},{"n":"苹果汁","c":"饮品","k":46.0,"p":0.1,"ch":11.7,"f":0.1,"s":"1杯250ml","src":"参考值"},{"n":"奶茶(全糖)","c":"饮品","k":58.0,"p":0.8,"ch":11.0,"f":1.1,"s":"1杯500ml","src":"参考值"},{"n":"拿铁咖啡","c":"饮品","k":42.0,"p":2.5,"ch":3.4,"f":2.2,"s":"1杯350ml","src":"参考值"},{"n":"美式咖啡","c":"饮品","k":2.0,"p":0.1,"ch":0.3,"f":0.0,"s":"1杯350ml","src":"参考值"},{"n":"红茶(无糖)","c":"饮品","k":1.0,"p":0.0,"ch":0.2,"f":0.0,"s":"—","src":"参考值"},{"n":"绿茶","c":"饮品","k":1.0,"p":0.0,"ch":0.2,"f":0.0,"s":"—","src":"参考值"},{"n":"运动饮料","c":"饮品","k":24.0,"p":0.0,"ch":6.0,"f":0.0,"s":"1瓶500ml","src":"参考值"},{"n":"啤酒","c":"饮品","k":32.0,"p":0.4,"ch":3.5,"f":0.0,"s":"1听330ml","src":"中国食物成分表"},{"n":"红酒","c":"饮品","k":74.0,"p":0.1,"ch":2.6,"f":0.0,"s":"1杯150ml","src":"参考值"},{"n":"椰子水","c":"饮品","k":19.0,"p":0.7,"ch":3.7,"f":0.2,"s":"1瓶330ml","src":"参考值"},{"n":"酸梅汤","c":"饮品","k":36.0,"p":0.2,"ch":8.8,"f":0.0,"s":"1杯300ml","src":"参考值"},{"n":"柠檬茶","c":"饮品","k":40.0,"p":0.0,"ch":10.0,"f":0.0,"s":"1瓶500ml","src":"参考值"},{"n":"分离乳清蛋白粉","c":"健身补剂","k":120.0,"p":24.0,"ch":3.0,"f":1.0,"s":"1勺30g","src":"参考值"},{"n":"蛋白棒","c":"健身补剂","k":200.0,"p":20.0,"ch":20.0,"f":7.0,"s":"1根","src":"参考值"},{"n":"肌酸","c":"健身补剂","k":0.0,"p":0.0,"ch":0.0,"f":0.0,"s":"1勺3g","src":"参考值"},{"n":"沙县鸡腿饭","c":"中餐成品","k":700.0,"p":35.0,"ch":85.0,"f":20.0,"s":"1份","src":"参考值"},{"n":"鸭腿饭","c":"中餐成品","k":650.0,"p":30.0,"ch":85.0,"f":20.0,"s":"1份","src":"参考值"},{"n":"兰州牛肉拉面","c":"中餐成品","k":600.0,"p":25.0,"ch":80.0,"f":18.0,"s":"1碗","src":"参考值"},{"n":"黄焖鸡米饭","c":"中餐成品","k":650.0,"p":35.0,"ch":80.0,"f":20.0,"s":"1份","src":"参考值"},{"n":"鸡腿饭盖浇饭","c":"中餐成品","k":680.0,"p":35.0,"ch":85.0,"f":20.0,"s":"1份","src":"参考值"},{"n":"番茄鸡蛋盖浇饭","c":"中餐成品","k":550.0,"p":20.0,"ch":85.0,"f":14.0,"s":"1份","src":"参考值"},{"n":"鱼香肉丝盖浇饭","c":"中餐成品","k":650.0,"p":22.0,"ch":85.0,"f":22.0,"s":"1份","src":"参考值"},{"n":"宫保鸡丁盖浇饭","c":"中餐成品","k":620.0,"p":25.0,"ch":80.0,"f":22.0,"s":"1份","src":"参考值"},{"n":"青椒肉丝盖浇饭","c":"中餐成品","k":600.0,"p":22.0,"ch":80.0,"f":20.0,"s":"1份","src":"参考值"},{"n":"红烧肉盖浇饭","c":"中餐成品","k":700.0,"p":22.0,"ch":80.0,"f":30.0,"s":"1份","src":"参考值"},{"n":"扬州炒饭","c":"中餐成品","k":600.0,"p":18.0,"ch":90.0,"f":18.0,"s":"1份","src":"参考值"},{"n":"蛋炒饭","c":"中餐成品","k":550.0,"p":16.0,"ch":80.0,"f":18.0,"s":"1份","src":"参考值"},{"n":"牛肉炒面","c":"中餐成品","k":620.0,"p":25.0,"ch":85.0,"f":18.0,"s":"1份","src":"参考值"},{"n":"猪肉炒面","c":"中餐成品","k":600.0,"p":22.0,"ch":85.0,"f":20.0,"s":"1份","src":"参考值"},{"n":"葱油拌面","c":"中餐成品","k":450.0,"p":12.0,"ch":80.0,"f":10.0,"s":"1份","src":"参考值"},{"n":"麻酱拌面","c":"中餐成品","k":520.0,"p":14.0,"ch":82.0,"f":16.0,"s":"1份","src":"参考值"},{"n":"红烧牛肉面","c":"中餐成品","k":650.0,"p":28.0,"ch":80.0,"f":22.0,"s":"1碗","src":"参考值"},{"n":"羊肉烩面","c":"中餐成品","k":620.0,"p":25.0,"ch":80.0,"f":20.0,"s":"1碗","src":"参考值"},{"n":"酸辣粉","c":"中餐成品","k":420.0,"p":8.0,"ch":60.0,"f":18.0,"s":"1碗","src":"参考值"},{"n":"螺蛳粉","c":"中餐成品","k":550.0,"p":12.0,"ch":75.0,"f":22.0,"s":"1碗","src":"参考值"},{"n":"麻辣烫(整份)","c":"中餐成品","k":450.0,"p":18.0,"ch":45.0,"f":20.0,"s":"1份","src":"参考值(按食材拆分更准)"},{"n":"麻辣香锅(整份)","c":"中餐成品","k":700.0,"p":30.0,"ch":45.0,"f":45.0,"s":"1份","src":"参考值(油多)"},{"n":"水饺(猪肉)","c":"中餐成品","k":45.0,"p":1.8,"ch":5.0,"f":2.0,"s":"1个","src":"参考值"},{"n":"水饺(韭菜鸡蛋)","c":"中餐成品","k":42.0,"p":1.6,"ch":5.5,"f":1.8,"s":"1个","src":"参考值"},{"n":"蒸饺","c":"中餐成品","k":50.0,"p":2.0,"ch":6.0,"f":2.0,"s":"1个","src":"参考值"},{"n":"小笼包","c":"中餐成品","k":55.0,"p":2.5,"ch":6.0,"f":2.5,"s":"1个","src":"参考值"},{"n":"生煎包","c":"中餐成品","k":70.0,"p":2.8,"ch":8.0,"f":3.5,"s":"1个","src":"参考值"},{"n":"肉包子","c":"中餐成品","k":200.0,"p":8.0,"ch":28.0,"f":7.0,"s":"1个","src":"参考值"},{"n":"菜包子","c":"中餐成品","k":180.0,"p":6.0,"ch":30.0,"f":5.0,"s":"1个","src":"参考值"},{"n":"韭菜盒子","c":"中餐成品","k":180.0,"p":5.0,"ch":22.0,"f":8.0,"s":"1个","src":"参考值"},{"n":"煎饼果子","c":"中餐成品","k":420.0,"p":15.0,"ch":55.0,"f":16.0,"s":"1份","src":"参考值"},{"n":"手抓饼","c":"中餐成品","k":350.0,"p":8.0,"ch":40.0,"f":17.0,"s":"1张","src":"参考值"},{"n":"鸡蛋灌饼","c":"中餐成品","k":400.0,"p":12.0,"ch":45.0,"f":18.0,"s":"1份","src":"参考值"},{"n":"肉夹馍","c":"中餐成品","k":450.0,"p":18.0,"ch":55.0,"f":16.0,"s":"1个","src":"参考值"},{"n":"凉皮","c":"中餐成品","k":350.0,"p":8.0,"ch":65.0,"f":6.0,"s":"1份","src":"参考值"},{"n":"擀面皮","c":"中餐成品","k":400.0,"p":8.0,"ch":70.0,"f":10.0,"s":"1份","src":"参考值"},{"n":"煎饺","c":"中餐成品","k":60.0,"p":2.2,"ch":6.0,"f":3.2,"s":"1个","src":"参考值"},{"n":"烧麦","c":"中餐成品","k":60.0,"p":2.0,"ch":7.0,"f":2.5,"s":"1个","src":"参考值"},{"n":"肠粉","c":"中餐成品","k":350.0,"p":10.0,"ch":60.0,"f":8.0,"s":"1份","src":"参考值"},{"n":"胡辣汤","c":"中餐成品","k":150.0,"p":6.0,"ch":22.0,"f":4.0,"s":"1碗","src":"参考值"},{"n":"蛋花汤","c":"中餐成品","k":90.0,"p":5.0,"ch":8.0,"f":3.0,"s":"1碗","src":"参考值"},{"n":"紫菜蛋花汤","c":"中餐成品","k":80.0,"p":5.0,"ch":7.0,"f":3.0,"s":"1碗","src":"参考值"},{"n":"鸭血粉丝汤","c":"中餐成品","k":350.0,"p":15.0,"ch":45.0,"f":12.0,"s":"1份","src":"参考值"},{"n":"炸鸡(一块带骨)","c":"中餐成品","k":250.0,"p":15.0,"ch":12.0,"f":16.0,"s":"1块","src":"参考值"},{"n":"烤鸡翅","c":"中餐成品","k":120.0,"p":10.0,"ch":3.0,"f":8.0,"s":"1个","src":"参考值"},{"n":"炸鸡排","c":"中餐成品","k":400.0,"p":22.0,"ch":25.0,"f":24.0,"s":"1块","src":"参考值"},{"n":"烤肠","c":"中餐成品","k":200.0,"p":10.0,"ch":8.0,"f":15.0,"s":"1根","src":"参考值"},{"n":"关东煮","c":"中餐成品","k":60.0,"p":4.0,"ch":8.0,"f":2.0,"s":"每100g","src":"参考值"},{"n":"章鱼小丸子","c":"中餐成品","k":180.0,"p":5.0,"ch":22.0,"f":8.0,"s":"每100g","src":"参考值"},{"n":"肯德基香辣鸡腿堡","c":"快餐成品","k":490.0,"p":25.0,"ch":46.0,"f":24.0,"s":"1个","src":"品牌参考值"},{"n":"肯德基劲脆鸡腿堡","c":"快餐成品","k":510.0,"p":26.0,"ch":45.0,"f":26.0,"s":"1个","src":"品牌参考值"},{"n":"肯德基鸡肉帕尼尼轻盈版","c":"快餐成品","k":350.0,"p":28.0,"ch":30.0,"f":12.0,"s":"1个","src":"品牌参考值"},{"n":"肯德基原味鸡","c":"快餐成品","k":220.0,"p":20.0,"ch":7.0,"f":13.0,"s":"1块","src":"品牌参考值"},{"n":"肯德基薯条(中)","c":"快餐成品","k":330.0,"p":4.0,"ch":42.0,"f":16.0,"s":"1份","src":"品牌参考值"},{"n":"肯德基鸡肉卷","c":"快餐成品","k":420.0,"p":22.0,"ch":40.0,"f":20.0,"s":"1个","src":"品牌参考值"},{"n":"肯德基蛋挞","c":"快餐成品","k":180.0,"p":3.0,"ch":16.0,"f":11.0,"s":"1个","src":"品牌参考值"},{"n":"麦当劳巨无霸","c":"快餐成品","k":540.0,"p":26.0,"ch":46.0,"f":28.0,"s":"1个","src":"品牌参考值"},{"n":"麦当劳双层吉士堡","c":"快餐成品","k":440.0,"p":24.0,"ch":35.0,"f":22.0,"s":"1个","src":"品牌参考值"},{"n":"麦当劳麦辣鸡腿堡","c":"快餐成品","k":480.0,"p":22.0,"ch":42.0,"f":26.0,"s":"1个","src":"品牌参考值"},{"n":"麦当劳薯条(中)","c":"快餐成品","k":340.0,"p":4.0,"ch":44.0,"f":17.0,"s":"1份","src":"品牌参考值"},{"n":"麦当劳麦乐鸡","c":"快餐成品","k":220.0,"p":12.0,"ch":15.0,"f":13.0,"s":"5块","src":"品牌参考值"},{"n":"汉堡王皇堡","c":"快餐成品","k":630.0,"p":30.0,"ch":50.0,"f":35.0,"s":"1个","src":"品牌参考值"},{"n":"汉堡王鸡条","c":"快餐成品","k":300.0,"p":15.0,"ch":20.0,"f":18.0,"s":"5条","src":"品牌参考值"},{"n":"赛百味火鸡三明治(6寸)","c":"快餐成品","k":320.0,"p":24.0,"ch":44.0,"f":7.0,"s":"1个","src":"品牌参考值"},{"n":"赛百味金枪鱼三明治(6寸)","c":"快餐成品","k":460.0,"p":20.0,"ch":46.0,"f":20.0,"s":"1个","src":"品牌参考值"},{"n":"薯片(原味)","c":"零食","k":548.0,"p":6.6,"ch":52.9,"f":33.9,"s":"—","src":"中国食物成分表"},{"n":"饼干(曲奇)","c":"零食","k":480.0,"p":6.0,"ch":65.0,"f":22.0,"s":"—","src":"参考值"},{"n":"苏打饼干","c":"零食","k":410.0,"p":8.0,"ch":75.0,"f":8.0,"s":"—","src":"参考值"},{"n":"奶油蛋糕","c":"零食","k":340.0,"p":5.0,"ch":50.0,"f":14.0,"s":"—","src":"参考值"},{"n":"黑巧克力","c":"零食","k":550.0,"p":5.0,"ch":55.0,"f":35.0,"s":"—","src":"参考值"},{"n":"牛奶巧克力","c":"零食","k":530.0,"p":8.0,"ch":58.0,"f":30.0,"s":"—","src":"参考值"},{"n":"冰淇淋","c":"零食","k":130.0,"p":3.0,"ch":17.0,"f":6.0,"s":"1杯100g","src":"参考值"},{"n":"雪糕","c":"零食","k":150.0,"p":2.0,"ch":20.0,"f":7.0,"s":"1根","src":"参考值"},{"n":"爆米花","c":"零食","k":390.0,"p":8.0,"ch":78.0,"f":8.0,"s":"—","src":"参考值"},{"n":"辣条","c":"零食","k":450.0,"p":12.0,"ch":50.0,"f":24.0,"s":"1包","src":"参考值"},{"n":"猪肉脯","c":"零食","k":380.0,"p":28.0,"ch":40.0,"f":12.0,"s":"—","src":"参考值"},{"n":"果冻","c":"零食","k":70.0,"p":0.0,"ch":16.0,"f":0.0,"s":"1个","src":"参考值"},{"n":"山楂片","c":"零食","k":320.0,"p":2.0,"ch":78.0,"f":1.0,"s":"—","src":"参考值"},{"n":"海苔","c":"零食","k":180.0,"p":25.0,"ch":28.0,"f":2.0,"s":"1包","src":"参考值"},{"n":"小鱼干","c":"零食","k":300.0,"p":45.0,"ch":6.0,"f":12.0,"s":"—","src":"参考值"},{"n":"虾条","c":"零食","k":500.0,"p":8.0,"ch":62.0,"f":25.0,"s":"—","src":"参考值"},{"n":"威化饼干","c":"零食","k":520.0,"p":6.0,"ch":65.0,"f":26.0,"s":"—","src":"参考值"},{"n":"蛋黄派","c":"零食","k":400.0,"p":5.0,"ch":60.0,"f":15.0,"s":"1个","src":"参考值"},{"n":"沙琪玛","c":"零食","k":460.0,"p":6.0,"ch":70.0,"f":18.0,"s":"1块","src":"参考值"},{"n":"锅巴","c":"零食","k":500.0,"p":8.0,"ch":60.0,"f":25.0,"s":"—","src":"参考值"},{"n":"花生油","c":"油脂调味","k":899.0,"p":0.0,"ch":0.0,"f":99.9,"s":"1勺≈10g","src":"中国食物成分表"},{"n":"大豆油","c":"油脂调味","k":899.0,"p":0.0,"ch":0.0,"f":99.9,"s":"1勺≈10g","src":"中国食物成分表"},{"n":"橄榄油","c":"油脂调味","k":899.0,"p":0.0,"ch":0.0,"f":100.0,"s":"1勺≈10g","src":"中国食物成分表"},{"n":"菜籽油","c":"油脂调味","k":899.0,"p":0.0,"ch":0.0,"f":99.9,"s":"1勺≈10g","src":"中国食物成分表"},{"n":"猪油","c":"油脂调味","k":897.0,"p":0.0,"ch":0.0,"f":99.6,"s":"1勺≈10g","src":"中国食物成分表"},{"n":"黄油","c":"油脂调味","k":717.0,"p":1.1,"ch":0.6,"f":81.0,"s":"1块≈10g","src":"中国食物成分表"},{"n":"酱油","c":"油脂调味","k":63.0,"p":5.6,"ch":9.9,"f":0.1,"s":"—","src":"中国食物成分表"},{"n":"蚝油","c":"油脂调味","k":110.0,"p":4.0,"ch":18.0,"f":1.0,"s":"—","src":"参考值"},{"n":"醋","c":"油脂调味","k":31.0,"p":2.1,"ch":4.9,"f":0.3,"s":"—","src":"中国食物成分表"},{"n":"料酒","c":"油脂调味","k":62.0,"p":0.5,"ch":4.0,"f":0.0,"s":"—","src":"参考值"},{"n":"白糖","c":"油脂调味","k":400.0,"p":0.0,"ch":99.9,"f":0.0,"s":"1勺≈10g","src":"中国食物成分表"},{"n":"蜂蜜","c":"油脂调味","k":321.0,"p":0.4,"ch":79.5,"f":1.9,"s":"1勺≈20g","src":"中国食物成分表"},{"n":"番茄酱","c":"油脂调味","k":80.0,"p":1.5,"ch":17.0,"f":0.5,"s":"—","src":"参考值"},{"n":"沙拉酱","c":"油脂调味","k":724.0,"p":1.0,"ch":8.0,"f":78.0,"s":"—","src":"参考值"},{"n":"蛋黄酱","c":"油脂调味","k":690.0,"p":1.0,"ch":4.0,"f":75.0,"s":"—","src":"参考值"},{"n":"芝麻酱","c":"油脂调味","k":630.0,"p":19.2,"ch":21.7,"f":52.7,"s":"1勺≈15g","src":"中国食物成分表"},{"n":"辣椒酱","c":"油脂调味","k":90.0,"p":3.0,"ch":14.0,"f":3.0,"s":"—","src":"参考值"},{"n":"豆瓣酱","c":"油脂调味","k":130.0,"p":5.0,"ch":16.0,"f":4.0,"s":"—","src":"参考值"},{"n":"炸酱面","c":"面食","k":139.2,"p":5.3,"ch":20.1,"f":3.8,"s":"1份≈375g","src":"AI拆解估算(面300g+肉末40g+酱)"},{"n":"热干面","c":"面食","k":152.6,"p":4.4,"ch":21.6,"f":5.0,"s":"1份≈325g","src":"AI拆解估算(面300g+芝麻酱20g)"},{"n":"油泼面","c":"面食","k":148.6,"p":3.3,"ch":20.8,"f":5.3,"s":"1份≈370g","src":"AI拆解估算(面350g+辣油)"},{"n":"刀削面(牛肉)","c":"面食","k":124.0,"p":4.7,"ch":19.9,"f":2.3,"s":"1份≈388g","src":"AI拆解估算(面350g+牛肉30g)"},{"n":"鸡蛋炒面","c":"面食","k":124.5,"p":3.2,"ch":18.7,"f":3.7,"s":"1份≈363g","src":"AI拆解估算(面300g+蛋+油12g)"},{"n":"干炒牛河","c":"面食","k":147.7,"p":4.3,"ch":23.0,"f":3.7,"s":"1份≈465g","src":"AI拆解估算(河粉350g+牛肉50g)"},{"n":"炒米粉","c":"面食","k":293.3,"p":5.2,"ch":50.3,"f":7.9,"s":"1份≈163g","src":"AI拆解估算(米粉100g+蛋+油)"},{"n":"乌冬面","c":"面食","k":124.0,"p":4.7,"ch":19.9,"f":2.3,"s":"1份≈388g","src":"AI拆解估算(面350g+牛肉30g)"},{"n":"车仔面","c":"面食","k":121.6,"p":5.4,"ch":17.4,"f":3.1,"s":"1份≈408g","src":"AI拆解估算(面300g+鱼丸100g)"},{"n":"云吞面","c":"面食","k":137.0,"p":5.1,"ch":20.2,"f":3.6,"s":"1份≈405g","src":"AI拆解估算(面250g+云吞150g)"},{"n":"阳春面","c":"面食","k":125.5,"p":3.4,"ch":21.6,"f":2.4,"s":"1份≈306g","src":"AI拆解估算(面300g+油6g)"},{"n":"重庆小面","c":"面食","k":133.2,"p":4.9,"ch":19.6,"f":3.5,"s":"1份≈340g","src":"AI拆解估算(面300g+肉末30g)"},{"n":"担担面","c":"面食","k":145.7,"p":6.1,"ch":18.7,"f":4.8,"s":"1份≈368g","src":"AI拆解估算(面300g+肉末50g)"},{"n":"鸡丝凉面","c":"面食","k":147.6,"p":8.3,"ch":18.2,"f":4.2,"s":"1份≈315g","src":"AI拆解估算(面250g+鸡丝50g)"},{"n":"朝鲜冷面","c":"面食","k":105.0,"p":4.7,"ch":19.5,"f":0.6,"s":"1份≈361g","src":"AI拆解估算(面300g+牛肉30g)"},{"n":"越南牛肉河粉","c":"面食","k":146.3,"p":4.9,"ch":25.4,"f":2.1,"s":"1份≈356g","src":"AI拆解估算(河粉300g+牛肉50g)"},{"n":"冬阴功汤面","c":"面食","k":122.9,"p":5.5,"ch":18.8,"f":2.4,"s":"1份≈358g","src":"AI拆解估算(面300g+虾50g)"},{"n":"臊子面","c":"面食","k":129.4,"p":5.5,"ch":19.1,"f":3.1,"s":"1份≈408g","src":"AI拆解估算(面350g+肉臊50g)"},{"n":"肉丝面","c":"面食","k":123.5,"p":5.1,"ch":17.9,"f":3.1,"s":"1份≈378g","src":"AI拆解估算(面300g+肉丝40g)"},{"n":"海鲜面","c":"面食","k":111.4,"p":6.7,"ch":15.2,"f":2.3,"s":"1份≈458g","src":"AI拆解估算(面300g+虾+蛤蜊)"},{"n":"番茄鸡蛋面","c":"面食","k":103.7,"p":2.9,"ch":17.1,"f":2.3,"s":"1份≈410g","src":"AI拆解估算(面300g+番茄+蛋2个)"},{"n":"排骨面","c":"面食","k":155.9,"p":6.0,"ch":17.2,"f":6.2,"s":"1份≈388g","src":"AI拆解估算(面300g+排骨80g)"},{"n":"陕西biangbiang面","c":"面食","k":131.2,"p":4.9,"ch":19.6,"f":3.2,"s":"1份≈452g","src":"AI拆解估算(面400g+辣油+肉臊)"},{"n":"去皮鸡腿饭","c":"饭食","k":118.0,"p":9.5,"ch":12.3,"f":3.5,"s":"1份≈455g","src":"AI拆解估算(饭200g+去皮鸡腿150g)"},{"n":"去皮鸭腿饭","c":"饭食","k":128.5,"p":10.9,"ch":11.6,"f":4.0,"s":"1份≈480g","src":"AI拆解估算(饭200g+去皮鸭腿180g)"},{"n":"叉烧饭","c":"饭食","k":150.5,"p":6.9,"ch":19.7,"f":5.2,"s":"1份≈400g","src":"AI拆解估算(饭250g+叉烧100g)"},{"n":"烧鸭饭","c":"饭食","k":145.5,"p":6.9,"ch":17.4,"f":5.2,"s":"1份≈400g","src":"AI拆解估算(饭250g+烧鸭100g)"},{"n":"烧鹅饭","c":"饭食","k":148.0,"p":6.9,"ch":17.4,"f":5.7,"s":"1份≈400g","src":"AI拆解估算(饭250g+烧鹅100g)"},{"n":"白切鸡饭","c":"饭食","k":117.8,"p":9.6,"ch":14.7,"f":2.3,"s":"1份≈455g","src":"AI拆解估算(饭250g+白切鸡150g)"},{"n":"豉油鸡饭","c":"饭食","k":111.0,"p":9.4,"ch":15.1,"f":1.4,"s":"1份≈465g","src":"AI拆解估算(饭250g+豉油鸡150g)"},{"n":"卤肉饭","c":"饭食","k":163.1,"p":4.4,"ch":17.9,"f":8.2,"s":"1份≈401g","src":"AI拆解估算(饭250g+卤肉100g+卤蛋)"},{"n":"隆江猪脚饭","c":"饭食","k":164.0,"p":7.7,"ch":15.4,"f":7.8,"s":"1份≈450g","src":"AI拆解估算(饭250g+猪脚100g)"},{"n":"腊味煲仔饭","c":"饭食","k":199.5,"p":5.7,"ch":18.9,"f":11.8,"s":"1份≈388g","src":"AI拆解估算(饭250g+腊肠50g+腊肉30g)"},{"n":"孜然羊肉盖饭","c":"饭食","k":162.0,"p":6.5,"ch":17.1,"f":7.6,"s":"1份≈395g","src":"AI拆解估算(饭250g+羊肉100g)"},{"n":"黑椒牛柳盖饭","c":"饭食","k":130.7,"p":6.8,"ch":17.1,"f":4.0,"s":"1份≈410g","src":"AI拆解估算(饭250g+牛柳100g)"},{"n":"咖喱鸡饭","c":"饭食","k":132.0,"p":5.3,"ch":17.7,"f":4.6,"s":"1份≈500g","src":"AI拆解估算(饭250g+咖喱鸡)"},{"n":"咖喱牛腩饭","c":"饭食","k":135.6,"p":5.7,"ch":17.7,"f":4.8,"s":"1份≈500g","src":"AI拆解估算(饭250g+咖喱牛腩)"},{"n":"石锅拌饭","c":"饭食","k":103.4,"p":6.1,"ch":17.9,"f":0.9,"s":"1份≈411g","src":"AI拆解估算(饭250g+牛肉80g+蛋)"},{"n":"韩式泡菜炒饭","c":"饭食","k":124.1,"p":2.4,"ch":22.0,"f":3.0,"s":"1份≈361g","src":"AI拆解估算(饭300g+泡菜+蛋)"},{"n":"芝士焗饭","c":"饭食","k":160.5,"p":7.5,"ch":19.7,"f":5.8,"s":"1份≈408g","src":"AI拆解估算(饭300g+芝士50g)"},{"n":"蛋包饭","c":"饭食","k":137.7,"p":2.5,"ch":24.5,"f":3.4,"s":"1份≈332g","src":"AI拆解估算(饭300g+蛋2个)"},{"n":"蒲烧鳗鱼饭","c":"饭食","k":160.5,"p":6.7,"ch":22.8,"f":4.7,"s":"1份≈370g","src":"AI拆解估算(饭250g+鳗鱼100g)"},{"n":"照烧鸡排饭","c":"饭食","k":150.7,"p":12.2,"ch":16.2,"f":3.9,"s":"1份≈440g","src":"AI拆解估算(饭250g+鸡排150g)"},{"n":"肥牛盖饭","c":"饭食","k":147.0,"p":6.5,"ch":16.8,"f":5.7,"s":"1份≈530g","src":"AI拆解估算(饭300g+肥牛150g)"},{"n":"亲子丼","c":"饭食","k":131.6,"p":5.8,"ch":19.5,"f":3.5,"s":"1份≈421g","src":"AI拆解估算(饭300g+鸡肉100g+蛋)"},{"n":"炸猪排饭","c":"饭食","k":163.6,"p":6.9,"ch":19.7,"f":6.4,"s":"1份≈415g","src":"AI拆解估算(饭250g+炸猪排)"},{"n":"牛肉炒饭","c":"饭食","k":133.8,"p":4.7,"ch":22.2,"f":3.0,"s":"1份≈411g","src":"AI拆解估算(饭350g+牛肉50g+蛋)"},{"n":"虾仁炒饭","c":"饭食","k":129.7,"p":5.5,"ch":21.1,"f":2.7,"s":"1份≈441g","src":"AI拆解估算(饭350g+虾仁80g)"},{"n":"香肠炒饭","c":"饭食","k":178.2,"p":4.7,"ch":23.4,"f":7.7,"s":"1份≈409g","src":"AI拆解估算(饭350g+腊肠50g)"},{"n":"咖喱炒饭","c":"饭食","k":142.0,"p":5.7,"ch":21.3,"f":3.8,"s":"1份≈460g","src":"AI拆解估算(饭350g+咖喱鸡丁)"},{"n":"酱油炒饭","c":"饭食","k":139.9,"p":2.6,"ch":24.6,"f":3.5,"s":"1份≈373g","src":"AI拆解估算(饭350g+蛋+酱油)"},{"n":"梅菜扣肉饭","c":"饭食","k":169.7,"p":4.4,"ch":18.6,"f":8.6,"s":"1份≈380g","src":"AI拆解估算(饭250g+扣肉100g)"},{"n":"东坡肉饭","c":"饭食","k":163.0,"p":4.4,"ch":17.9,"f":8.2,"s":"1份≈400g","src":"AI拆解估算(饭250g+东坡肉100g)"},{"n":"糖醋排骨饭","c":"饭食","k":183.4,"p":6.8,"ch":17.4,"f":9.1,"s":"1份≈380g","src":"AI拆解估算(饭250g+糖醋排骨120g)"},{"n":"水煮牛肉饭","c":"饭食","k":119.1,"p":6.4,"ch":15.3,"f":3.7,"s":"1份≈445g","src":"AI拆解估算(饭250g+水煮牛肉)"},{"n":"水煮鱼饭","c":"饭食","k":120.0,"p":6.7,"ch":13.6,"f":4.4,"s":"1份≈495g","src":"AI拆解估算(饭250g+水煮鱼片)"},{"n":"酸菜鱼饭","c":"饭食","k":126.5,"p":6.9,"ch":14.3,"f":4.7,"s":"1份≈465g","src":"AI拆解估算(饭250g+酸菜鱼)"},{"n":"麻辣鸡丁饭","c":"饭食","k":168.5,"p":10.6,"ch":17.8,"f":5.9,"s":"1份≈375g","src":"AI拆解估算(饭250g+辣子鸡丁)"},{"n":"干锅肥肠饭","c":"饭食","k":156.5,"p":4.3,"ch":17.1,"f":7.8,"s":"1份≈395g","src":"AI拆解估算(饭250g+干锅肥肠)"},{"n":"麻辣香锅饭","c":"饭食","k":135.0,"p":6.5,"ch":16.5,"f":4.8,"s":"1份≈420g","src":"AI拆解估算(饭250g+香锅菜)"},{"n":"香炸鸡排","c":"炸物","k":220.4,"p":25.9,"ch":4.9,"f":10.0,"s":"1份≈245g","src":"AI拆解估算(1块:鸡胸200g裹粉炸)"},{"n":"脆皮炸鸡腿","c":"炸物","k":219.6,"p":14.0,"ch":5.0,"f":16.0,"s":"1份≈240g","src":"AI拆解估算(1个:鸡腿200g裹粉炸)"},{"n":"炸鸡翅","c":"炸物","k":248.0,"p":14.5,"ch":9.1,"f":17.2,"s":"1份≈75g","src":"AI拆解估算(1个)"},{"n":"炸鸡块","c":"炸物","k":264.4,"p":21.8,"ch":8.9,"f":15.3,"s":"1份≈45g","src":"AI拆解估算(1块,约5块/份)"},{"n":"鸡米花","c":"炸物","k":224.0,"p":25.0,"ch":6.2,"f":10.3,"s":"1份≈192g","src":"AI拆解估算(1份)"},{"n":"炸鸡柳","c":"炸物","k":224.0,"p":25.0,"ch":6.2,"f":10.3,"s":"1份≈192g","src":"AI拆解估算(1份)"},{"n":"街头炸薯条","c":"炸物","k":151.6,"p":1.8,"ch":15.6,"f":9.3,"s":"1份≈275g","src":"AI拆解估算(中份:土豆250g炸)"},{"n":"盐酥鸡","c":"炸物","k":234.4,"p":24.6,"ch":6.2,"f":11.7,"s":"1份≈195g","src":"AI拆解估算(1份)"},{"n":"日式唐扬炸鸡","c":"炸物","k":228.3,"p":13.9,"ch":4.4,"f":17.3,"s":"1份≈180g","src":"AI拆解估算(1份)"},{"n":"铁板鸡排","c":"炸物","k":202.0,"p":25.6,"ch":1.0,"f":9.9,"s":"1份≈245g","src":"AI拆解估算(1份)"},{"n":"香煎鸡排","c":"炸物","k":200.0,"p":29.5,"ch":0.0,"f":8.2,"s":"1份≈210g","src":"AI拆解估算(1份)"},{"n":"香煎猪排","c":"炸物","k":222.4,"p":18.4,"ch":0.7,"f":16.2,"s":"1份≈165g","src":"AI拆解估算(1块)"},{"n":"爆浆鸡排","c":"炸物","k":224.6,"p":26.2,"ch":4.8,"f":10.5,"s":"1份≈272g","src":"AI拆解估算(1份)"},{"n":"炸鸡排饭","c":"饭食","k":167.7,"p":14.1,"ch":15.5,"f":5.1,"s":"1份≈495g","src":"AI拆解估算(饭250g+炸鸡排)"},{"n":"西冷牛排(200g)","c":"西餐","k":135.2,"p":19.3,"ch":1.2,"f":6.0,"s":"1份≈210g","src":"AI拆解估算(净牛排200g)"},{"n":"菲力牛排(180g)","c":"西餐","k":137.9,"p":19.2,"ch":1.2,"f":6.4,"s":"1份≈190g","src":"AI拆解估算(净牛排180g)"},{"n":"肋眼牛排(220g)","c":"西餐","k":150.9,"p":19.1,"ch":2.0,"f":7.5,"s":"1份≈230g","src":"AI拆解估算(净牛排220g)"},{"n":"黑椒牛扒","c":"西餐","k":104.8,"p":16.6,"ch":2.6,"f":3.2,"s":"1份≈250g","src":"AI拆解估算(净牛扒200g)"},{"n":"战斧牛排(400g)","c":"西餐","k":139.5,"p":19.4,"ch":2.0,"f":6.1,"s":"1份≈410g","src":"AI拆解估算(净牛排400g)"},{"n":"烤羊排(3根)","c":"西餐","k":202.7,"p":19.0,"ch":0.0,"f":14.1,"s":"1份≈150g","src":"AI拆解估算(羊排150g)"},{"n":"牛排套餐(配薯条)","c":"西餐","k":111.4,"p":9.8,"ch":8.5,"f":4.3,"s":"1份≈465g","src":"AI拆解估算(牛排+薯条+菜)"},{"n":"香煎三文鱼(200g)","c":"西餐","k":175.2,"p":16.4,"ch":0.0,"f":12.2,"s":"1份≈210g","src":"AI拆解估算(三文鱼200g)"},{"n":"鸡胸肉沙拉","c":"西餐","k":98.1,"p":13.6,"ch":1.7,"f":3.8,"s":"1份≈360g","src":"AI拆解估算(沙拉酱少版)"},{"n":"凯撒沙拉","c":"西餐","k":195.7,"p":12.9,"ch":9.4,"f":11.8,"s":"1份≈300g","src":"AI拆解估算(含面包丁)"},{"n":"牛肉意面","c":"西餐","k":134.7,"p":7.3,"ch":22.6,"f":1.5,"s":"1份≈380g","src":"AI拆解估算(意面250g+牛肉50g)"},{"n":"奶油培根意面","c":"西餐","k":187.6,"p":5.6,"ch":22.6,"f":8.3,"s":"1份≈380g","src":"AI拆解估算(意面250g+奶油酱)"},{"n":"海鲜意面","c":"西餐","k":166.3,"p":8.0,"ch":21.9,"f":5.0,"s":"1份≈365g","src":"AI拆解估算(意面250g+海鲜)"},{"n":"玛格丽特披萨(1/4)","c":"西餐","k":267.7,"p":10.7,"ch":30.6,"f":11.6,"s":"1份≈158g","src":"AI拆解估算(1/4个)"},{"n":"意式肉酱披萨(1/4)","c":"西餐","k":330.4,"p":16.4,"ch":34.0,"f":14.6,"s":"1份≈138g","src":"AI拆解估算(1/4个)"},{"n":"榴莲披萨(1/4)","c":"西餐","k":308.2,"p":11.3,"ch":38.3,"f":12.6,"s":"1份≈158g","src":"AI拆解估算(1/4个)"},{"n":"手工牛肉汉堡","c":"西餐","k":232.3,"p":15.4,"ch":22.9,"f":9.6,"s":"1份≈235g","src":"AI拆解估算(1个)"},{"n":"培根芝士堡","c":"西餐","k":225.2,"p":16.0,"ch":18.1,"f":10.6,"s":"1份≈305g","src":"AI拆解估算(1个)"},{"n":"火腿三明治","c":"西餐","k":234.8,"p":11.9,"ch":32.4,"f":7.2,"s":"1份≈161g","src":"AI拆解估算(1个)"},{"n":"鸡胸三明治","c":"西餐","k":203.8,"p":17.7,"ch":21.4,"f":5.6,"s":"1份≈240g","src":"AI拆解估算(1个)"},{"n":"俱乐部三明治","c":"西餐","k":244.8,"p":17.9,"ch":27.1,"f":7.8,"s":"1份≈281g","src":"AI拆解估算(1个)"},{"n":"墨西哥牛肉卷","c":"西餐","k":197.2,"p":14.6,"ch":25.9,"f":4.1,"s":"1份≈215g","src":"AI拆解估算(1个)"},{"n":"鸡肉塔可(2个)","c":"西餐","k":207.0,"p":19.3,"ch":26.6,"f":2.4,"s":"1份≈200g","src":"AI拆解估算(2个)"},{"n":"炸鱼薯条","c":"西餐","k":125.9,"p":7.8,"ch":11.1,"f":5.7,"s":"1份≈382g","src":"AI拆解估算(1份)"},{"n":"香草烤鱼","c":"西餐","k":136.2,"p":13.2,"ch":3.3,"f":7.9,"s":"1份≈260g","src":"AI拆解估算(1份)"},{"n":"三文鱼刺身(6片)","c":"日料","k":139.0,"p":17.2,"ch":0.0,"f":7.8,"s":"1份≈100g","src":"AI拆解估算(6片≈100g)"},{"n":"寿司(三文鱼,6个)","c":"日料","k":120.8,"p":5.5,"ch":20.7,"f":1.8,"s":"1份≈250g","src":"AI拆解估算(6个)"},{"n":"加州卷(6个)","c":"日料","k":147.5,"p":5.2,"ch":19.2,"f":5.9,"s":"1份≈295g","src":"AI拆解估算(6个)"},{"n":"鳗鱼寿司(2个)","c":"日料","k":167.5,"p":7.4,"ch":22.2,"f":5.4,"s":"1份≈160g","src":"AI拆解估算(2个)"},{"n":"天妇罗虾(3只)","c":"日料","k":186.7,"p":14.8,"ch":8.8,"f":10.2,"s":"1份≈120g","src":"AI拆解估算(3只)"},{"n":"日式豚骨拉面","c":"日料","k":123.8,"p":5.2,"ch":18.0,"f":3.0,"s":"1份≈441g","src":"AI拆解估算(1碗)"},{"n":"日式咖喱饭","c":"日料","k":132.6,"p":8.4,"ch":18.5,"f":2.7,"s":"1份≈500g","src":"AI拆解估算(1份)"},{"n":"大阪烧","c":"日料","k":250.9,"p":5.9,"ch":41.0,"f":7.4,"s":"1份≈161g","src":"AI拆解估算(1份)"},{"n":"味噌汤","c":"日料","k":87.5,"p":9.2,"ch":4.6,"f":3.6,"s":"1份≈80g","src":"AI拆解估算(1碗)"},{"n":"寿司拼盘(份)","c":"日料","k":116.0,"p":6.4,"ch":19.8,"f":1.3,"s":"1份≈400g","src":"AI拆解估算(1份)"},{"n":"刺身拼盘(份)","c":"日料","k":108.0,"p":16.0,"ch":1.4,"f":4.2,"s":"1份≈200g","src":"AI拆解估算(1份)"},{"n":"韩式炸鸡(6块)","c":"韩料","k":221.7,"p":12.7,"ch":7.3,"f":15.8,"s":"1份≈410g","src":"AI拆解估算(6块)"},{"n":"部队火锅(份)","c":"韩料","k":226.6,"p":8.8,"ch":17.7,"f":13.2,"s":"1份≈410g","src":"AI拆解估算(1锅)"},{"n":"韩式烤肉(150g)","c":"韩料","k":411.0,"p":7.5,"ch":0.0,"f":39.0,"s":"1份≈155g","src":"AI拆解估算(五花肉150g)"},{"n":"泰式咖喱鸡","c":"东南亚","k":142.3,"p":8.3,"ch":9.2,"f":8.2,"s":"1份≈350g","src":"AI拆解估算(1份)"},{"n":"菠萝炒饭","c":"东南亚","k":118.0,"p":3.8,"ch":20.6,"f":2.3,"s":"1份≈490g","src":"AI拆解估算(1份)"},{"n":"印尼炒饭","c":"东南亚","k":149.5,"p":5.1,"ch":21.8,"f":4.7,"s":"1份≈416g","src":"AI拆解估算(1份)"},{"n":"马来叻沙","c":"东南亚","k":130.6,"p":5.0,"ch":18.0,"f":4.1,"s":"1份≈458g","src":"AI拆解估算(1碗)"},{"n":"冬阴功汤","c":"东南亚","k":106.5,"p":12.5,"ch":3.1,"f":4.9,"s":"1份≈168g","src":"AI拆解估算(1碗)"},{"n":"印度咖喱饭","c":"东南亚","k":120.8,"p":6.2,"ch":18.8,"f":2.4,"s":"1份≈500g","src":"AI拆解估算(1份)"},{"n":"羊肉串(大)","c":"烧烤","k":203.1,"p":18.4,"ch":1.6,"f":13.8,"s":"1份≈32g","src":"AI拆解估算(大串30g)"},{"n":"羊肉串(小)","c":"烧烤","k":125.0,"p":20.0,"ch":1.9,"f":4.4,"s":"1份≈16g","src":"AI拆解估算(小串15g)"},{"n":"牛肉串(大)","c":"烧烤","k":112.5,"p":19.4,"ch":2.8,"f":2.5,"s":"1份≈32g","src":"AI拆解估算(大串30g)"},{"n":"牛肉串(小)","c":"烧烤","k":112.5,"p":19.4,"ch":2.5,"f":2.5,"s":"1份≈16g","src":"AI拆解估算(小串15g)"},{"n":"烤鸡翅(串)","c":"烧烤","k":194.2,"p":17.1,"ch":5.1,"f":11.7,"s":"1份≈103g","src":"AI拆解估算(1串2个)"},{"n":"烤鸡翅(个)","c":"烧烤","k":194.2,"p":17.1,"ch":5.2,"f":11.7,"s":"1份≈51.5g","src":"AI拆解估算(1个)"},{"n":"烤鸡爪(串)","c":"烧烤","k":251.6,"p":23.2,"ch":3.5,"f":16.1,"s":"1份≈31g","src":"AI拆解估算(1串)"},{"n":"烤鸡胗(串)","c":"烧烤","k":112.9,"p":17.1,"ch":0.6,"f":4.5,"s":"1份≈31g","src":"AI拆解估算(1串)"},{"n":"烤掌中宝(串)","c":"烧烤","k":193.5,"p":17.1,"ch":5.2,"f":11.6,"s":"1份≈31g","src":"AI拆解估算(1串)"},{"n":"烤鱿鱼(串)","c":"烧烤","k":87.5,"p":14.9,"ch":0.7,"f":1.2,"s":"1份≈72g","src":"AI拆解估算(1串)"},{"n":"烤小黄鱼(串)","c":"烧烤","k":114.6,"p":16.3,"ch":0.5,"f":5.4,"s":"1份≈41g","src":"AI拆解估算(1串)"},{"n":"烤秋刀鱼(条)","c":"烧烤","k":129.3,"p":17.4,"ch":3.7,"f":5.0,"s":"1份≈82g","src":"AI拆解估算(1条)"},{"n":"烤生蚝(个)","c":"烧烤","k":80.0,"p":5.0,"ch":8.1,"f":3.1,"s":"1份≈70g","src":"AI拆解估算(1个)"},{"n":"烤扇贝(个)","c":"烧烤","k":72.0,"p":9.4,"ch":3.6,"f":2.2,"s":"1份≈50g","src":"AI拆解估算(1个)"},{"n":"烤大虾(串)","c":"烧烤","k":96.8,"p":18.4,"ch":3.5,"f":1.0,"s":"1份≈31g","src":"AI拆解估算(1串)"},{"n":"烤小龙虾(10只)","c":"烧烤","k":93.3,"p":18.9,"ch":1.0,"f":1.1,"s":"1份≈150g","src":"AI拆解估算(10只)"},{"n":"烤五花肉(串)","c":"烧烤","k":388.5,"p":7.7,"ch":0.8,"f":35.8,"s":"1份≈26g","src":"AI拆解估算(1串)"},{"n":"烤肥肠(串)","c":"烧烤","k":196.8,"p":10.0,"ch":0.6,"f":16.8,"s":"1份≈31g","src":"AI拆解估算(1串)"},{"n":"烤鸭肠(串)","c":"烧烤","k":66.7,"p":5.2,"ch":1.4,"f":1.0,"s":"1份≈21g","src":"AI拆解估算(1串)"},{"n":"烤广式香肠(串)","c":"烧烤","k":492.7,"p":19.8,"ch":10.2,"f":44.1,"s":"1份≈41g","src":"AI拆解估算(1串)"},{"n":"烤培根(串)","c":"烧烤","k":385.7,"p":12.9,"ch":2.9,"f":35.7,"s":"1份≈21g","src":"AI拆解估算(1串)"},{"n":"烤排骨(串)","c":"烧烤","k":261.3,"p":15.8,"ch":1.9,"f":19.7,"s":"1份≈31g","src":"AI拆解估算(1串)"},{"n":"烤羊腰(串)","c":"烧烤","k":202.4,"p":18.8,"ch":0.5,"f":13.9,"s":"1份≈41g","src":"AI拆解估算(1串)"},{"n":"烤玉米(根)","c":"烧烤","k":112.0,"p":4.0,"ch":22.8,"f":1.2,"s":"1份≈250g","src":"AI拆解估算(1根)"},{"n":"烤土豆片(串)","c":"烧烤","k":80.6,"p":2.3,"ch":17.4,"f":0.3,"s":"1份≈31g","src":"AI拆解估算(1串)"},{"n":"烤红薯(个)","c":"烧烤","k":99.0,"p":1.1,"ch":24.7,"f":0.2,"s":"1份≈200g","src":"AI拆解估算(1个)"},{"n":"烤茄子(个)","c":"烧烤","k":54.0,"p":1.3,"ch":5.2,"f":3.4,"s":"1份≈235g","src":"AI拆解估算(1个带蒜蓉)"},{"n":"烤韭菜(串)","c":"烧烤","k":32.3,"p":2.6,"ch":5.2,"f":0.6,"s":"1份≈31g","src":"AI拆解估算(1串)"},{"n":"烤金针菇(串)","c":"烧烤","k":36.6,"p":2.4,"ch":6.3,"f":0.5,"s":"1份≈41g","src":"AI拆解估算(1串)"},{"n":"烤香菇(串)","c":"烧烤","k":29.3,"p":2.4,"ch":5.6,"f":0.5,"s":"1份≈41g","src":"AI拆解估算(1串)"},{"n":"烤藕片(串)","c":"烧烤","k":77.4,"p":2.9,"ch":16.8,"f":0.3,"s":"1份≈31g","src":"AI拆解估算(1串)"},{"n":"烤青椒(串)","c":"烧烤","k":29.0,"p":1.6,"ch":6.1,"f":0.6,"s":"1份≈31g","src":"AI拆解估算(1串)"},{"n":"烤面筋(串)","c":"烧烤","k":171.0,"p":22.6,"ch":12.6,"f":2.3,"s":"1份≈31g","src":"AI拆解估算(1串)"},{"n":"烤豆腐干(串)","c":"烧烤","k":145.2,"p":15.8,"ch":6.5,"f":3.9,"s":"1份≈31g","src":"AI拆解估算(1串)"},{"n":"烤馒头(串)","c":"烧烤","k":222.0,"p":7.1,"ch":46.6,"f":1.2,"s":"1份≈41g","src":"AI拆解估算(1串)"},{"n":"烤年糕(串)","c":"烧烤","k":229.3,"p":4.1,"ch":49.3,"f":1.2,"s":"1份≈41g","src":"AI拆解估算(1串)"},{"n":"烤馕(个)","c":"烧烤","k":372.0,"p":9.9,"ch":72.0,"f":5.4,"s":"1份≈125g","src":"AI拆解估算(1个)"},{"n":"烤淀粉肠(根)","c":"烧烤","k":160.0,"p":4.0,"ch":22.0,"f":6.0,"s":"1份≈60g","src":"AI拆解估算(1根)"},{"n":"烤鸡蛋(个)","c":"烧烤","k":143.6,"p":13.3,"ch":2.7,"f":8.7,"s":"1份≈55g","src":"AI拆解估算(1个)"},{"n":"烤冷面(份)","c":"烧烤","k":143.6,"p":4.9,"ch":18.6,"f":4.9,"s":"1份≈241g","src":"AI拆解估算(1份)"},{"n":"清汤锅底(锅)","c":"火锅","k":113.3,"p":0.9,"ch":5.6,"f":10.0,"s":"1份≈45g","src":"AI拆解估算(1锅,含油少)"},{"n":"牛油辣锅底(锅)","c":"火锅","k":800.0,"p":0.0,"ch":0.0,"f":88.0,"s":"1份≈40g","src":"AI拆解估算(1锅,油40g)"},{"n":"番茄锅底(锅)","c":"火锅","k":50.0,"p":0.9,"ch":3.8,"f":3.6,"s":"1份≈208g","src":"AI拆解估算(1锅)"},{"n":"肥牛卷(100g)","c":"火锅","k":260.0,"p":15.0,"ch":0.0,"f":22.0,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"羊肉卷(100g)","c":"火锅","k":280.0,"p":15.0,"ch":0.0,"f":24.0,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"牛上脑(100g)","c":"火锅","k":125.0,"p":19.9,"ch":2.0,"f":4.2,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"毛肚(100g)","c":"火锅","k":72.0,"p":14.5,"ch":0.0,"f":3.7,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"黄喉(100g)","c":"火锅","k":72.0,"p":14.5,"ch":0.0,"f":3.7,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"百叶(100g)","c":"火锅","k":72.0,"p":14.5,"ch":0.0,"f":3.7,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"鸭血(100g)","c":"火锅","k":60.0,"p":5.0,"ch":0.4,"f":0.4,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"鸭肠(100g)","c":"火锅","k":60.0,"p":5.0,"ch":0.4,"f":0.4,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"鹅肠(100g)","c":"火锅","k":60.0,"p":5.0,"ch":0.4,"f":0.4,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"牛肉丸(100g)","c":"火锅","k":125.0,"p":19.9,"ch":2.0,"f":4.2,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"贡丸(100g)","c":"火锅","k":395.0,"p":7.7,"ch":0.0,"f":37.0,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"墨鱼丸(100g)","c":"火锅","k":84.0,"p":15.0,"ch":0.0,"f":1.0,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"午餐肉(100g)","c":"火锅","k":330.0,"p":13.2,"ch":0.9,"f":30.6,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"火腿肠(100g)","c":"火锅","k":330.0,"p":13.2,"ch":0.9,"f":30.6,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"蟹肉棒(100g)","c":"火锅","k":93.0,"p":18.6,"ch":2.8,"f":0.8,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"鱼豆腐(100g)","c":"火锅","k":98.0,"p":12.2,"ch":2.0,"f":4.8,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"冻豆腐(100g)","c":"火锅","k":98.0,"p":12.2,"ch":2.0,"f":4.8,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"宽粉(100g)","c":"火锅","k":120.0,"p":0.5,"ch":29.0,"f":0.1,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"粉丝(熟,100g)","c":"火锅","k":120.0,"p":0.5,"ch":29.0,"f":0.1,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"竹笋(100g)","c":"火锅","k":20.0,"p":2.6,"ch":3.3,"f":0.2,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"花生酱蘸料(100g)","c":"火锅蘸料","k":574.0,"p":24.1,"ch":21.7,"f":44.3,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"麻酱蘸料(100g)","c":"火锅蘸料","k":630.0,"p":19.2,"ch":21.7,"f":52.7,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"香油碟(100g)","c":"火锅蘸料","k":665.0,"p":0.9,"ch":2.4,"f":72.6,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"海鲜汁(100g)","c":"火锅蘸料","k":86.0,"p":4.8,"ch":13.9,"f":0.6,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"冷锅串串(荤串)","c":"火锅","k":214.3,"p":18.2,"ch":1.4,"f":15.0,"s":"1份≈28g","src":"AI拆解估算(1串)"},{"n":"钵钵鸡(份)","c":"火锅","k":179.4,"p":10.6,"ch":3.6,"f":13.7,"s":"1份≈320g","src":"AI拆解估算(1份)"},{"n":"红烧肉(100g)","c":"家常菜","k":350.0,"p":10.0,"ch":5.0,"f":32.0,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"糖醋排骨(100g)","c":"家常菜","k":301.8,"p":14.2,"ch":8.0,"f":22.1,"s":"1份≈113g","src":"AI拆解估算(100g)"},{"n":"红烧排骨(100g)","c":"家常菜","k":282.5,"p":15.5,"ch":1.0,"f":22.3,"s":"1份≈103g","src":"AI拆解估算(100g)"},{"n":"回锅肉(100g)","c":"家常菜","k":312.4,"p":5.5,"ch":1.5,"f":29.5,"s":"1份≈105g","src":"AI拆解估算(100g)"},{"n":"鱼香肉丝(100g)","c":"家常菜","k":169.4,"p":12.9,"ch":2.8,"f":12.0,"s":"1份≈98g","src":"AI拆解估算(100g)"},{"n":"宫保鸡丁(100g)","c":"家常菜","k":264.0,"p":28.0,"ch":2.6,"f":15.0,"s":"1份≈86g","src":"AI拆解估算(100g)"},{"n":"麻婆豆腐(100g)","c":"家常菜","k":143.6,"p":12.8,"ch":2.5,"f":9.4,"s":"1份≈110g","src":"AI拆解估算(100g)"},{"n":"水煮牛肉(100g)","c":"家常菜","k":135.7,"p":13.1,"ch":1.6,"f":8.6,"s":"1份≈98g","src":"AI拆解估算(100g)"},{"n":"水煮鱼(100g)","c":"家常菜","k":139.8,"p":10.8,"ch":0.9,"f":10.4,"s":"1份≈98g","src":"AI拆解估算(100g)"},{"n":"酸菜鱼(100g)","c":"家常菜","k":126.0,"p":10.8,"ch":1.0,"f":8.8,"s":"1份≈96g","src":"AI拆解估算(100g)"},{"n":"辣子鸡(100g)","c":"家常菜","k":244.9,"p":14.4,"ch":0.0,"f":20.6,"s":"1份≈78g","src":"AI拆解估算(100g)"},{"n":"大盘鸡(100g)","c":"家常菜","k":186.3,"p":10.7,"ch":5.5,"f":13.6,"s":"1份≈95g","src":"AI拆解估算(100g)"},{"n":"黄焖鸡(100g)","c":"家常菜","k":171.0,"p":11.0,"ch":5.6,"f":11.7,"s":"1份≈93g","src":"AI拆解估算(100g)"},{"n":"红烧鸡块(100g)","c":"家常菜","k":229.3,"p":14.9,"ch":0.0,"f":18.8,"s":"1份≈75g","src":"AI拆解估算(100g)"},{"n":"可乐鸡翅(100g)","c":"家常菜","k":130.8,"p":10.2,"ch":7.1,"f":6.9,"s":"1份≈120g","src":"AI拆解估算(100g)"},{"n":"糖醋里脊(100g)","c":"家常菜","k":254.8,"p":15.0,"ch":12.4,"f":16.1,"s":"1份≈84g","src":"AI拆解估算(100g)"},{"n":"锅包肉(100g)","c":"家常菜","k":258.8,"p":15.2,"ch":7.5,"f":18.7,"s":"1份≈85g","src":"AI拆解估算(100g)"},{"n":"溜肉段(100g)","c":"家常菜","k":260.0,"p":15.8,"ch":5.5,"f":19.4,"s":"1份≈80g","src":"AI拆解估算(100g)"},{"n":"地三鲜(100g)","c":"家常菜","k":107.4,"p":1.4,"ch":9.2,"f":7.6,"s":"1份≈108g","src":"AI拆解估算(100g)"},{"n":"干煸豆角(100g)","c":"家常菜","k":112.2,"p":4.1,"ch":4.8,"f":9.0,"s":"1份≈98g","src":"AI拆解估算(100g)"},{"n":"虎皮青椒(100g)","c":"家常菜","k":77.1,"p":1.4,"ch":5.1,"f":6.6,"s":"1份≈96g","src":"AI拆解估算(100g)"},{"n":"干锅花菜(100g)","c":"家常菜","k":101.0,"p":5.5,"ch":3.8,"f":7.4,"s":"1份≈96g","src":"AI拆解估算(100g)"},{"n":"干锅虾(100g)","c":"家常菜","k":213.3,"p":15.7,"ch":2.4,"f":15.7,"s":"1份≈83g","src":"AI拆解估算(100g)"},{"n":"油焖大虾(100g)","c":"家常菜","k":165.9,"p":16.9,"ch":2.5,"f":9.8,"s":"1份≈88g","src":"AI拆解估算(100g)"},{"n":"白灼虾(100g)","c":"家常菜","k":93.0,"p":18.6,"ch":2.8,"f":0.8,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"蒜蓉粉丝虾(100g)","c":"家常菜","k":104.0,"p":11.6,"ch":11.2,"f":1.4,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"清蒸鱼(100g)","c":"家常菜","k":128.4,"p":16.3,"ch":0.0,"f":7.1,"s":"1份≈102g","src":"AI拆解估算(100g)"},{"n":"红烧鱼(100g)","c":"家常菜","k":184.1,"p":15.1,"ch":0.0,"f":13.9,"s":"1份≈88g","src":"AI拆解估算(100g)"},{"n":"糖醋鱼(100g)","c":"家常菜","k":210.8,"p":13.0,"ch":9.7,"f":13.3,"s":"1份≈93g","src":"AI拆解估算(100g)"},{"n":"剁椒鱼头(份)","c":"家常菜","k":157.5,"p":15.6,"ch":0.0,"f":10.6,"s":"1份≈320g","src":"AI拆解估算(1份)"},{"n":"酸辣土豆丝(100g)","c":"家常菜","k":128.1,"p":1.9,"ch":16.1,"f":6.5,"s":"1份≈96g","src":"AI拆解估算(100g)"},{"n":"番茄炒蛋(100g)","c":"家常菜","k":109.5,"p":5.6,"ch":3.3,"f":8.2,"s":"1份≈105g","src":"AI拆解估算(100g)"},{"n":"青椒肉丝(100g)","c":"家常菜","k":131.6,"p":11.3,"ch":3.1,"f":8.6,"s":"1份≈95g","src":"AI拆解估算(100g)"},{"n":"木须肉(100g)","c":"家常菜","k":158.9,"p":13.1,"ch":2.7,"f":10.7,"s":"1份≈95g","src":"AI拆解估算(100g)"},{"n":"肉末茄子(100g)","c":"家常菜","k":119.4,"p":4.9,"ch":3.8,"f":9.6,"s":"1份≈98g","src":"AI拆解估算(100g)"},{"n":"红烧茄子(100g)","c":"家常菜","k":102.3,"p":1.0,"ch":4.4,"f":9.3,"s":"1份≈88g","src":"AI拆解估算(100g)"},{"n":"蒜蓉西兰花(100g)","c":"家常菜","k":44.0,"p":4.0,"ch":4.7,"f":1.4,"s":"1份≈100g","src":"AI拆解估算(100g)"},{"n":"香菇油菜(100g)","c":"家常菜","k":49.5,"p":1.8,"ch":4.0,"f":3.4,"s":"1份≈103g","src":"AI拆解估算(100g)"},{"n":"上汤娃娃菜(100g)","c":"家常菜","k":38.7,"p":1.5,"ch":2.4,"f":3.0,"s":"1份≈93g","src":"AI拆解估算(100g)"},{"n":"冬瓜排骨汤(碗)","c":"家常菜","k":109.8,"p":5.5,"ch":2.0,"f":8.4,"s":"1份≈153g","src":"AI拆解估算(1碗)"},{"n":"西湖牛肉羹(碗)","c":"家常菜","k":104.0,"p":11.8,"ch":2.6,"f":3.7,"s":"1份≈100g","src":"AI拆解估算(1碗)"},{"n":"玉米排骨汤(碗)","c":"家常菜","k":170.8,"p":8.6,"ch":14.4,"f":8.5,"s":"1份≈130g","src":"AI拆解估算(1碗)"},{"n":"老鸭汤(碗)","c":"家常菜","k":100.0,"p":6.2,"ch":1.7,"f":7.7,"s":"1份≈130g","src":"AI拆解估算(1碗)"},{"n":"羊肉汤(碗)","c":"家常菜","k":138.8,"p":10.2,"ch":14.2,"f":4.5,"s":"1份≈103g","src":"AI拆解估算(1碗)"},{"n":"牛肉汤(碗)","c":"家常菜","k":53.8,"p":8.3,"ch":3.5,"f":0.9,"s":"1份≈130g","src":"AI拆解估算(1碗)"},{"n":"疙瘩汤(碗)","c":"家常菜","k":160.8,"p":7.2,"ch":27.3,"f":2.8,"s":"1份≈120g","src":"AI拆解估算(1碗)"},{"n":"酸辣汤(碗)","c":"家常菜","k":86.7,"p":6.8,"ch":3.9,"f":3.3,"s":"1份≈90g","src":"AI拆解估算(1碗)"},{"n":"烤鱼(整条,带配菜)","c":"家常菜","k":132.6,"p":12.6,"ch":3.2,"f":7.8,"s":"1份≈680g","src":"AI拆解估算(1份)"},{"n":"冒菜(份)","c":"家常菜","k":145.5,"p":8.8,"ch":4.9,"f":10.0,"s":"1份≈220g","src":"AI拆解估算(1份)"},{"n":"菠萝包","c":"港式","k":396.7,"p":8.1,"ch":69.6,"f":10.2,"s":"1份≈90g","src":"AI拆解估算(1个)"},{"n":"菠萝油","c":"港式","k":428.0,"p":7.4,"ch":62.6,"f":17.2,"s":"1份≈100g","src":"AI拆解估算(1个)"},{"n":"丝袜奶茶(杯)","c":"港式","k":50.5,"p":1.5,"ch":7.2,"f":1.7,"s":"1份≈315g","src":"AI拆解估算(300ml)"},{"n":"冻柠茶(杯)","c":"港式","k":31.3,"p":0.1,"ch":7.4,"f":0.1,"s":"1份≈300g","src":"AI拆解估算(300ml)"},{"n":"港式鸳鸯(杯)","c":"港式","k":59.6,"p":1.8,"ch":8.5,"f":2.0,"s":"1份≈265g","src":"AI拆解估算(300ml)"},{"n":"港式云吞面(碗)","c":"港式","k":137.0,"p":5.1,"ch":20.2,"f":3.6,"s":"1份≈405g","src":"AI拆解估算(1碗)"},{"n":"豉油皇炒面","c":"港式","k":128.0,"p":3.2,"ch":18.2,"f":4.3,"s":"1份≈375g","src":"AI拆解估算(1份)"},{"n":"港式西多士","c":"港式","k":318.1,"p":7.2,"ch":43.2,"f":14.0,"s":"1份≈116g","src":"AI拆解估算(1份)"},{"n":"猪扒包","c":"港式","k":228.9,"p":14.1,"ch":21.8,"f":9.9,"s":"1份≈190g","src":"AI拆解估算(1个)"},{"n":"珍珠奶茶(全糖)","c":"甜品饮品","k":101.6,"p":2.1,"ch":18.0,"f":2.4,"s":"1份≈305g","src":"AI拆解估算(500ml)"},{"n":"珍珠奶茶(半糖)","c":"甜品饮品","k":91.5,"p":2.2,"ch":15.2,"f":2.4,"s":"1份≈295g","src":"AI拆解估算(500ml)"},{"n":"波霸奶茶","c":"甜品饮品","k":101.4,"p":1.9,"ch":18.8,"f":2.1,"s":"1份≈345g","src":"AI拆解估算(500ml)"},{"n":"奶盖茶(杯)","c":"甜品饮品","k":72.6,"p":0.4,"ch":6.8,"f":4.9,"s":"1份≈390g","src":"AI拆解估算(500ml)"},{"n":"芝士奶盖茶(杯)","c":"甜品饮品","k":82.0,"p":1.4,"ch":6.7,"f":5.6,"s":"1份≈405g","src":"AI拆解估算(500ml)"},{"n":"芋泥奶茶(杯)","c":"甜品饮品","k":99.7,"p":2.3,"ch":17.3,"f":2.6,"s":"1份≈345g","src":"AI拆解估算(500ml)"},{"n":"鲜芋仙(碗)","c":"甜品饮品","k":108.8,"p":1.4,"ch":26.3,"f":0.2,"s":"1份≈320g","src":"AI拆解估算(1碗)"},{"n":"焦糖布丁(个)","c":"甜品饮品","k":108.6,"p":2.8,"ch":17.2,"f":3.2,"s":"1份≈116g","src":"AI拆解估算(1个)"},{"n":"提拉米苏(块)","c":"甜品饮品","k":340.0,"p":5.0,"ch":50.0,"f":14.0,"s":"1份≈100g","src":"AI拆解估算(1块)"},{"n":"芝士蛋糕(块)","c":"甜品饮品","k":339.3,"p":20.6,"ch":24.8,"f":17.6,"s":"1份≈135g","src":"AI拆解估算(1块)"},{"n":"巧克力慕斯(块)","c":"甜品饮品","k":301.4,"p":4.4,"ch":35.4,"f":16.3,"s":"1份≈140g","src":"AI拆解估算(1块)"},{"n":"芒果班戟(个)","c":"甜品饮品","k":162.4,"p":4.1,"ch":28.0,"f":4.2,"s":"1份≈101g","src":"AI拆解估算(1个)"},{"n":"草莓奶油蛋糕(块)","c":"甜品饮品","k":340.0,"p":5.0,"ch":50.0,"f":14.0,"s":"1份≈150g","src":"AI拆解估算(1块)"},{"n":"戚风蛋糕(块)","c":"甜品饮品","k":357.6,"p":8.0,"ch":79.5,"f":1.2,"s":"1份≈66g","src":"AI拆解估算(1块)"},{"n":"马卡龙(个)","c":"甜品饮品","k":320.0,"p":5.1,"ch":62.9,"f":5.7,"s":"1份≈35g","src":"AI拆解估算(1个)"},{"n":"可颂(个)","c":"甜品饮品","k":424.0,"p":8.4,"ch":60.1,"f":17.5,"s":"1份≈75g","src":"AI拆解估算(1个)"},{"n":"甜甜圈(个)","c":"甜品饮品","k":423.5,"p":7.3,"ch":70.6,"f":12.8,"s":"1份≈85g","src":"AI拆解估算(1个)"},{"n":"麻薯(个)","c":"甜品饮品","k":360.0,"p":5.6,"ch":82.4,"f":0.8,"s":"1份≈50g","src":"AI拆解估算(1个)"},{"n":"泡芙(个)","c":"甜品饮品","k":275.0,"p":6.7,"ch":41.5,"f":9.8,"s":"1份≈60g","src":"AI拆解估算(1个)"},{"n":"摩卡咖啡(杯)","c":"甜品饮品","k":121.7,"p":3.2,"ch":13.4,"f":6.2,"s":"1份≈230g","src":"AI拆解估算(350ml)"},{"n":"卡布奇诺(杯)","c":"甜品饮品","k":65.0,"p":3.2,"ch":4.9,"f":3.6,"s":"1份≈200g","src":"AI拆解估算(350ml)"},{"n":"星冰乐(杯)","c":"甜品饮品","k":113.7,"p":2.9,"ch":14.6,"f":4.9,"s":"1份≈255g","src":"AI拆解估算(450ml)"},{"n":"杨枝甘露(杯)","c":"甜品饮品","k":61.2,"p":1.5,"ch":11.2,"f":1.3,"s":"1份≈240g","src":"AI拆解估算(1杯)"},{"n":"双皮奶(碗)","c":"甜品饮品","k":86.5,"p":4.0,"ch":8.9,"f":3.9,"s":"1份≈230g","src":"AI拆解估算(1碗)"},{"n":"山东杂粮煎饼","c":"小吃","k":290.9,"p":6.8,"ch":46.1,"f":9.2,"s":"1份≈99g","src":"AI拆解估算(1份)"},{"n":"锅贴(6个)","c":"小吃","k":312.3,"p":13.4,"ch":40.9,"f":10.8,"s":"1份≈130g","src":"AI拆解估算(6个)"},{"n":"生煎包(4个)","c":"小吃","k":312.3,"p":13.4,"ch":40.9,"f":10.8,"s":"1份≈130g","src":"AI拆解估算(4个)"},{"n":"小笼包(6个)","c":"小吃","k":254.6,"p":14.9,"ch":41.1,"f":3.7,"s":"1份≈130g","src":"AI拆解估算(6个)"},{"n":"汤包(6个)","c":"小吃","k":246.4,"p":15.3,"ch":38.2,"f":3.9,"s":"1份≈140g","src":"AI拆解估算(6个)"},{"n":"烧卖(4个)","c":"小吃","k":207.1,"p":10.4,"ch":36.4,"f":2.4,"s":"1份≈140g","src":"AI拆解估算(4个)"},{"n":"糍饭团","c":"小吃","k":161.1,"p":5.0,"ch":29.6,"f":4.2,"s":"1份≈270g","src":"AI拆解估算(1个)"},{"n":"粢饭糕(块)","c":"小吃","k":155.7,"p":2.5,"ch":24.6,"f":5.3,"s":"1份≈158g","src":"AI拆解估算(1块)"},{"n":"油条(根)","c":"小吃","k":430.5,"p":8.8,"ch":64.0,"f":15.9,"s":"1份≈82g","src":"AI拆解估算(1根)"},{"n":"豆腐脑(碗)","c":"小吃","k":85.7,"p":6.2,"ch":3.7,"f":2.4,"s":"1份≈210g","src":"AI拆解估算(1碗)"},{"n":"臭豆腐(份)","c":"小吃","k":167.4,"p":10.7,"ch":2.3,"f":13.0,"s":"1份≈230g","src":"AI拆解估算(1份)"},{"n":"炸臭豆腐(份)","c":"小吃","k":154.0,"p":11.3,"ch":1.9,"f":11.4,"s":"1份≈215g","src":"AI拆解估算(1份)"},{"n":"铁板鱿鱼(份)","c":"小吃","k":123.9,"p":14.2,"ch":0.4,"f":5.7,"s":"1份≈213g","src":"AI拆解估算(1份)"},{"n":"鸡蛋仔(份)","c":"小吃","k":406.6,"p":7.9,"ch":70.8,"f":10.7,"s":"1份≈106g","src":"AI拆解估算(1份)"},{"n":"华夫饼(份)","c":"小吃","k":223.3,"p":6.2,"ch":44.8,"f":2.4,"s":"1份≈176g","src":"AI拆解估算(1份)"},{"n":"可丽饼(份)","c":"小吃","k":309.9,"p":8.5,"ch":57.5,"f":5.7,"s":"1份≈81g","src":"AI拆解估算(1份)"},{"n":"车轮饼(个)","c":"小吃","k":350.0,"p":11.7,"ch":75.3,"f":1.0,"s":"1份≈70g","src":"AI拆解估算(1个)"},{"n":"红豆饼(个)","c":"小吃","k":349.5,"p":11.8,"ch":75.3,"f":0.9,"s":"1份≈95g","src":"AI拆解估算(1个)"},{"n":"凤梨酥(个)","c":"小吃","k":417.1,"p":6.0,"ch":71.4,"f":12.3,"s":"1份≈35g","src":"AI拆解估算(1个)"},{"n":"蛋黄酥(个)","c":"小吃","k":401.3,"p":8.7,"ch":53.3,"f":17.3,"s":"1份≈75g","src":"AI拆解估算(1个)"},{"n":"月饼(个)","c":"小吃","k":447.4,"p":6.5,"ch":68.4,"f":16.7,"s":"1份≈95g","src":"AI拆解估算(1个)"},{"n":"青团(个)","c":"小吃","k":358.3,"p":5.8,"ch":81.7,"f":0.8,"s":"1份≈60g","src":"AI拆解估算(1个)"},{"n":"粽子(个)","c":"小吃","k":354.5,"p":6.4,"ch":80.0,"f":0.9,"s":"1份≈165g","src":"AI拆解估算(1个)"},{"n":"汤圆(6个)","c":"小吃","k":250.0,"p":5.0,"ch":45.0,"f":6.0,"s":"1份≈120g","src":"AI拆解估算(6个)"},{"n":"糍粑(份)","c":"小吃","k":420.8,"p":8.5,"ch":65.0,"f":14.1,"s":"1份≈125g","src":"AI拆解估算(1份)"},{"n":"驴打滚(份)","c":"小吃","k":350.0,"p":8.5,"ch":77.5,"f":0.8,"s":"1份≈130g","src":"AI拆解估算(1份)"},{"n":"豌豆黄(份)","c":"小吃","k":143.5,"p":6.4,"ch":31.5,"f":0.3,"s":"1份≈115g","src":"AI拆解估算(1份)"},{"n":"糖葫芦(串)","c":"小吃","k":333.3,"p":1.7,"ch":81.7,"f":0.8,"s":"1份≈120g","src":"AI拆解估算(1串)"},{"n":"烤鱿鱼(整只)","c":"小吃","k":101.2,"p":14.6,"ch":0.3,"f":3.0,"s":"1份≈258g","src":"AI拆解估算(1只)"},{"n":"酱香饼(份)","c":"小吃","k":421.7,"p":9.0,"ch":65.2,"f":14.3,"s":"1份≈115g","src":"AI拆解估算(1份)"},{"n":"烤冷面加蛋(份)","c":"小吃","k":149.8,"p":4.9,"ch":18.5,"f":5.7,"s":"1份≈243g","src":"AI拆解估算(1份)"},{"n":"手抓饼加蛋","c":"小吃","k":433.3,"p":8.8,"ch":62.5,"f":17.0,"s":"1份≈96g","src":"AI拆解估算(1个)"},{"n":"鸡蛋灌饼加肠","c":"小吃","k":339.7,"p":10.9,"ch":44.9,"f":13.0,"s":"1份≈136g","src":"AI拆解估算(1份)"},{"n":"肉夹馍(纯瘦)","c":"小吃","k":228.1,"p":15.2,"ch":38.1,"f":1.9,"s":"1份≈160g","src":"AI拆解估算(1个)"},{"n":"烤面筋大串","c":"小吃","k":171.0,"p":22.6,"ch":12.4,"f":2.3,"s":"1份≈62g","src":"AI拆解估算(1串)"}];</script>
+<script>
+const KEY='diet_planner_wb_v1';
+const uid=()=>Math.random().toString(36).slice(2,9);
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const today=()=>ymd(new Date());
+const DAY=864e5;
+const rnd=(a,b)=>Math.random()*(b-a)+a;
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const money0=n=>Math.round(n).toLocaleString('cn');
+
+const TARGET={train:{kcal:2400,p:135,c:341,f:55},rest:{kcal:2000,p:135,c:241,f:55}};
+const MEALS={
+  train:[{k:'早餐',pct:.19},{k:'午餐',pct:.31},{k:'练前',pct:.19},{k:'练后',pct:.31}],
+  rest:[{k:'早餐',pct:.22},{k:'午餐',pct:.39},{k:'晚餐',pct:.39}]
+};
+/* 从食物库里挑：主食、蛋白、蔬菜、水果，不手写名字，避免对不上 */
+const FOOD_MAP={};
+FOOD_DB.forEach(f=>{FOOD_MAP[f.n]=f;});
+function byCats(cats,filter){
+  return FOOD_DB.filter(f=>cats.includes(f.c)&&(!filter||filter(f))).map(f=>f.n);
+}
+const POOL={
+  carb: byCats(['主食'],f=>f.k>=90&&f.k<=380&&f.f<=4&&f.p<=10&&!/粉(干)|面(干)/.test(f.n)),
+  protein: byCats(['肉禽','水产','蛋类','豆制品'],f=>f.p>=12&&f.f<=9&&f.k<=250&&!/干|腐竹|豆皮|培根|五花|排骨|肉松|肝|肚|肠|心|胗|爪|蹄|鱼丸|虾滑|蟹|咸/.test(f.n)),
+  veg: byCats(['蔬菜'],f=>f.k>=10&&f.k<=60&&!/姜|蒜|葱|香菜|辣椒|紫菜|银耳|香菇\(干\)/.test(f.n)),
+  fruit: byCats(['水果'],f=>f.k<=100&&!/干|脯|枣/.test(f.n))
+};
+function foodByName(n){
+  if(FOOD_MAP[n]) return FOOD_MAP[n];
+  const k=Object.keys(FOOD_MAP).find(x=>x.includes(n)||n.includes(x));
+  return k?FOOD_MAP[k]:null;
+}
+function macros(items){
+  let kcal=0,p=0,c=0,f=0;
+  items.forEach(it=>{ const g=it.g/100; kcal+=it.k*g; p+=it.p*g; c+=it.ch*g; f+=it.f*g; });
+  return {kcal, p, ch:c, f};
+}
+function round5(g){ return Math.max(5,Math.round(g/5)*5); }
+function mkItem(f,g){ return {name:f.n,g:round5(g),k:f.k,p:f.p,ch:f.ch,f:f.f}; }
+
+/* ============ 演示数据 ============ */
+/* 按餐次挑候选，早餐和练前练后不吃盖浇饭 */
+const MEAL_POOL={
+  '早餐':{carb:['燕麦片(干)','全麦面包','馒头','白粥','玉米(鲜)','红薯','全麦吐司'],prot:['鸡蛋','豆浆(无糖)','牛肉(瘦)','豆腐(北)'],fruit:['香蕉','蓝莓','猕猴桃','苹果'],veg:['番茄','黄瓜','生菜','菠菜']},
+  '午餐':{carb:['米饭(蒸)','白面条(煮)','意大利面(煮)','红薯','藜麦(熟)','玉米(鲜)'],prot:['鸡胸肉(生)','牛肉(瘦)','虾','三文鱼','鳕鱼','豆腐(北)'],fruit:['苹果','橙子','猕猴桃'],veg:['西兰花(生)','生菜','菠菜','菜花','油麦菜']},
+  '晚餐':{carb:['米饭(蒸)','白面条(煮)','红薯','荞麦面(煮)','玉米(鲜)'],prot:['鸡胸肉(生)','牛肉(瘦)','虾','鲈鱼','豆腐(北)'],fruit:['蓝莓','橙子','苹果'],veg:['西兰花(生)','生菜','菠菜','冬瓜','金针菇']},
+  '练前':{carb:['全麦面包','白吐司','红薯'],prot:['鸡蛋','豆浆(无糖)','鸡胸肉(生)'],fruit:['香蕉'],veg:['黄瓜','番茄']},
+  '练后':{carb:['米饭(蒸)','红薯','白吐司'],prot:['鸡胸肉(生)','分离乳清蛋白粉','鸡蛋'],fruit:['香蕉'],veg:['生菜','番茄']}
+};
+function pickBy(names,fallback){
+  names=names&&names.length?names:fallback;
+  return foodByName(pick(names))||foodByName(pick(fallback));
+}
+function makeMealRec(mealKcal,mealName){
+  const items=[];
+  const mp=MEAL_POOL[mealName]||{};
+  const veg=pickBy(mp.veg,POOL.veg);
+  if(veg) items.push(mkItem(veg,rnd(150,200)));
+  const prot=pickBy(mp.prot,POOL.protein);
+  if(prot){
+    const g=Math.max(80,Math.min(200,(mealKcal*0.36)/(prot.k/100)));
+    items.push(mkItem(prot,g));
+  }
+  let kcal=macros(items).kcal;
+  if(mealKcal-kcal>220 && Math.random()<0.55){
+    const fruit=pickBy(mp.fruit,POOL.fruit);
+    if(fruit) items.push(mkItem(fruit,rnd(90,150)));
+  }
+  // 午晚餐按家常做法加一点烹饪油，不然脂肪永远填不满
+  if((mealName==='午餐'||mealName==='晚餐')&&Math.random()<0.9){
+    const oil=foodByName('大豆油');
+    if(oil) items.push(mkItem(oil,rnd(6,10)));
+  }
+  kcal=macros(items).kcal;
+  const carb=pickBy(mp.carb,POOL.carb);
+  if(carb){
+    const g=Math.max(40,Math.min(300,(mealKcal-kcal)/(carb.k/100)));
+    items.unshift(mkItem(carb,g));
+  }
+  return items;
+}
+function demoData(){
+  const t=new Date();
+  const logs={};
+  // 今天：早餐+午餐已录
+  const dayToday={
+    train:[
+      {meal:'早餐',items:makeMealRec(TARGET.train.kcal*MEALS.train[0].pct,'早餐')},
+      {meal:'午餐',items:makeMealRec(TARGET.train.kcal*MEALS.train[1].pct,'午餐')}
+    ],
+    rest:[
+      {meal:'早餐',items:makeMealRec(TARGET.rest.kcal*MEALS.rest[0].pct,'早餐')}
+    ]
+  };
+  logs[today()]=dayToday;
+  // 历史7天
+  for(let i=1;i<=7;i++){
+    const d=ymd(new Date(t.getTime()-i*DAY));
+    const mode=Math.random()<.6?'train':'rest';
+    const tg=TARGET[mode];
+    const entries=MEALS[mode].map(m=>({meal:m.k,items:makeMealRec(tg.kcal*m.pct,m.k)}));
+    logs[d]={train:mode==='train'?entries:null,rest:mode==='rest'?entries:null};
+  }
+  return {mode:'train',logs,weight:70.8,goalKcal:2400,recCache:{}};
+}
+function load(){
+  try{const raw=localStorage.getItem(KEY); if(raw){const d=JSON.parse(raw); if(d&&d.logs) return d;}}catch(e){}
+  const d=demoData(); save(d); return d;
+}
+let D=load();
+function save(){try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){}}
+
+/* ============ 计算 ============ */
+function entriesFor(date, mode){
+  const rec=D.logs[date];
+  if(!rec) return [];
+  return rec[mode]||[];
+}
+function entriesSum(date,mode){
+  const e=entriesFor(date,mode);
+  let s={kcal:0,p:0,ch:0,f:0};
+  e.forEach(m=>m.items.forEach(it=>{
+    const g=it.g/100;
+    s.kcal+=it.k*g; s.p+=it.p*g; s.ch+=it.ch*g; s.f+=it.f*g;
+  }));
+  return s;
+}
+
+/* ============ 渲染今日 ============ */
+function renderToday(){
+  const d=new Date(); const wk='日一二三四五六'[d.getDay()];
+  document.getElementById('todayLine').textContent=`${d.getMonth()+1}月${d.getDate()}日 周${wk} · 演示数据`;
+  document.querySelectorAll('#daySwitch button').forEach(b=>b.classList.toggle('on',b.dataset.day===D.mode));
+  const tg=TARGET[D.mode];
+  const sum=entriesSum(today(),D.mode);
+  document.getElementById('heroKcal').innerHTML=Math.round(sum.kcal)+'<small>/ '+tg.kcal+' 大卡</small>';
+  const left=tg.kcal-sum.kcal;
+  document.getElementById('heroLeft').textContent=left>=0?('今天还能吃 '+Math.round(left)+' 大卡'):('已经超了 '+Math.round(-left)+' 大卡');
+  document.getElementById('heroBar').style.width=Math.min(sum.kcal/tg.kcal*100,100)+'%';
+
+  const mp=Math.min(sum.p/tg.p*100,100), mc=Math.min(sum.ch/tg.c*100,100), mf=Math.min(sum.f/tg.f*100,100);
+  document.getElementById('mbP').style.width=mp+'%';
+  document.getElementById('mbC').style.width=mc+'%';
+  document.getElementById('mbF').style.width=mf+'%';
+  document.getElementById('mvP').textContent=Math.round(sum.p)+' / '+tg.p+'g';
+  document.getElementById('mvC').textContent=Math.round(sum.ch)+' / '+tg.c+'g';
+  document.getElementById('mvF').textContent=Math.round(sum.f)+' / '+tg.f+'g';
+
+  // 餐卡
+  const meals=MEALS[D.mode];
+  const logged=entriesFor(today(),D.mode);
+  let remaining=tg.kcal-sum.kcal;
+  const html=meals.map((m,idx)=>{
+    const loggedMeal=logged.find(x=>x.meal===m.k);
+    const mealTarget=Math.round(tg.kcal*m.pct);
+    const doneKcal=loggedMeal?Math.round(macros(loggedMeal.items).kcal):0;
+    const recKey=D.mode+'_'+m.k+'_'+idx;
+    if(!D.recCache[recKey]){
+      D.recCache[recKey]=makeMealRec(mealTarget,m.k);
+    }
+    const rec=D.recCache[recKey];
+    const rm=macros(rec);
+    return `<div class="meal">
+      <div class="meal-head">
+        <div class="meal-name"><span class="ico">${['☀','🍚','⚡','🥛'][idx%4]}</span>${m.k}</div>
+        <div class="meal-kcal">目标 <b>${mealTarget}</b> 大卡${doneKcal?` · 已录 ${doneKcal}`:''}</div>
+      </div>
+      <div class="rec">
+        ${rec.map(it=>`<span class="food-chip">${it.name.replace(/\(.*?\)/g,'')} <b>${it.g}g</b></span>`).join('')}
+      </div>
+      <div class="rec-macro"><span>约 ${Math.round(rm.kcal)} 大卡</span><span>蛋白 ${Math.round(rm.p)}g</span><span>碳水 ${Math.round(rm.ch)}g</span><span>脂肪 ${Math.round(rm.f)}g</span></div>
+      ${loggedMeal?`<div class="logged">
+        ${loggedMeal.items.map((it,i)=>`<div class="ln"><span>${it.name} ${it.g}g</span><span>${Math.round(it.k*it.g/100)} 大卡 <button data-del-item="${m.k}|${i}" style="color:#C98A83;margin-left:6px">×</button></span></div>`).join('')}
+      </div>`:''}
+      <div class="meal-actions">
+        <button class="btn btn-ghost" data-refresh="${recKey}">换一套</button>
+        <button class="btn btn-accent" data-addmeal="${m.k}">录入这餐</button>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('meals').innerHTML=html;
+  save();
+}
+
+/* ============ 记录页 ============ */
+function renderLog(){
+  const logged=entriesFor(today(),D.mode);
+  const all=[];
+  logged.forEach(m=>m.items.forEach((it,i)=>all.push({m:m.meal,it,i})));
+  document.getElementById('todayLog').innerHTML=all.length?all.map(x=>`
+    <div class="item">
+      <div class="main"><div class="t1">${x.it.name}</div><div class="t2">${x.m} · ${x.it.g}g</div></div>
+      <div class="val">${Math.round(x.it.k*x.it.g/100)} kcal</div>
+    </div>`).join(''):'<div class="empty">今天还没记录</div>';
+
+  // 7天柱状
+  const days=[];
+  for(let i=6;i>=0;i--){
+    const d=ymd(new Date(Date.now()-i*DAY));
+    const rec=D.logs[d]||{};
+    const mode=i===0?D.mode:((rec.train&&rec.train.length)?'train':((rec.rest&&rec.rest.length)?'rest':'train'));
+    const s=entriesSum(d,mode);
+    days.push({d, kcal:s.kcal});
+  }
+  const max=Math.max(...days.map(x=>x.kcal),TARGET.train.kcal);
+  document.getElementById('chart7').innerHTML=days.map(x=>{
+    const h=Math.max(6,x.kcal/max*100);
+    const over=x.kcal>TARGET.train.kcal;
+    return `<div class="col"><div class="cbar ${over?'over':''}" style="height:${h}%"></div>
+      <div class="lbl">${x.d.slice(5)}</div><div class="kv">${x.kcal?Math.round(x.kcal):'—'}</div></div>`;
+  }).join('');
+  const week=days.filter(x=>x.kcal>0);
+  const avg=week.length?Math.round(week.reduce((s,x)=>s+x.kcal,0)/week.length):0;
+  document.getElementById('avgHint').textContent='日均 '+avg+' 大卡';
+}
+
+/* ============ 食物库 ============ */
+let dbCat='全部', dbQuery='';
+function renderDb(){
+  const cats=['全部',...Object.keys(FOOD_DB.reduce((a,f)=>(a[f.c]=1,a),{}))];
+  document.getElementById('dbCats').innerHTML=cats.map(c=>`<button class="seg ${c===dbCat?'on':''}" data-cat="${c}">${c}</button>`).join('');
+  let list=FOOD_DB.filter(f=>dbCat==='全部'||f.c===dbCat);
+  if(dbQuery.trim()){
+    const q=dbQuery.trim();
+    list=list.filter(f=>f.n.includes(q)||f.c.includes(q));
+  }
+  document.getElementById('dbCount').textContent=list.length+' 种';
+  document.getElementById('dbList').innerHTML=list.slice(0,80).map(f=>`
+    <div class="item">
+      <div class="main"><div class="t1">${f.n}</div><div class="t2">${f.c} · ${f.s}</div></div>
+      <div class="val">${Math.round(f.k)} kcal<div class="hint" style="font-weight:400">蛋白 ${f.p}g</div></div>
+    </div>`).join('') + (list.length>80?'<div class="foot">只显示前 80 条，用搜索缩小范围</div>':'');
+}
+
+/* ============ 我的 ============ */
+function renderMe(){
+  const dayCount=Object.keys(D.logs).length;
+  document.getElementById('meWeight').innerHTML=(D.weight||70.8).toFixed(1)+'<small>kg</small>';
+  document.getElementById('meKcal').innerHTML=TARGET[D.mode].kcal+'<small>kcal</small>';
+  document.getElementById('meDays').textContent=dayCount;
+  document.getElementById('weightInput').value=D.weight||70.8;
+}
+
+function renderAll(){ renderToday(); renderLog(); renderDb(); renderMe(); save(); }
+
+/* ============ 交互 ============ */
+const toastEl=document.getElementById('toast');
+let toastTimer=0;
+function toast(m){ toastEl.textContent=m; toastEl.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1800); }
+
+function goTab(v){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.dataset.tab===v));
+  ['today','log','db','me'].forEach(k=>document.getElementById('v-'+k).hidden=(k!==v));
+  window.scrollTo({top:0});
+}
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-tab]'); if(t){ goTab(t.dataset.tab); return; }
+  const ds=e.target.closest('[data-day]');
+  if(ds){ D.mode=ds.dataset.day; renderToday(); renderLog(); renderMe(); toast('已切到'+(D.mode==='train'?'训练日':'休息日')); return; }
+  const rf=e.target.closest('[data-refresh]');
+  if(rf){
+    const key=rf.dataset.refresh;
+    const idx=parseInt(key.split('_').pop());
+    const meal=MEALS[D.mode][idx];
+    const mealKcal=Math.round(TARGET[D.mode].kcal*meal.pct);
+    D.recCache[key]=makeMealRec(mealKcal,meal.k);
+    renderToday(); toast('换了一套搭配'); return;
+  }
+  const am=e.target.closest('[data-addmeal]');
+  if(am){ openAddFood(am.dataset.addmeal); return; }
+  const di=e.target.closest('[data-del-item]');
+  if(di){
+    const [meal,idx]=di.dataset.delItem.split('|');
+    const logged=entriesFor(today(),D.mode);
+    const m=logged.find(x=>x.meal===meal);
+    if(m){ m.items.splice(parseInt(idx),1); save(); renderToday(); renderLog(); }
+    return;
+  }
+  const cat=e.target.closest('[data-cat]');
+  if(cat){ dbCat=cat.dataset.cat; renderDb(); return; }
+});
+
+document.getElementById('dbSearch').addEventListener('input',e=>{ dbQuery=e.target.value; renderDb(); });
+
+/* 食物库选择器 */
+function openAddFood(mealName){
+  const mask=document.createElement('div'); mask.className='mask';
+  mask.innerHTML=`<div class="sheet"><h3>给「${mealName}」加食物</h3>
+    <div class="searchbox" style="margin-bottom:10px">
+      <svg viewBox="0 0 24 24" class="ic"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="sf" placeholder="搜食物名，如 鸡胸、米饭、拉面">
+    </div>
+    <div class="field"><label>克数（g）</label><input id="sg" type="number" value="100"></div>
+    <div class="sheet-list" id="slist"></div>
+    <div class="sheet-actions"><button class="btn btn-ghost" data-cancel>取消</button><button class="btn btn-accent" data-ok>加入这餐</button></div>
+  </div>`;
+  document.body.appendChild(mask);
+  let picked=null;
+  const listEl=mask.querySelector('#slist');
+  const input=mask.querySelector('#sf');
+  function draw(){
+    const q=input.value.trim();
+    let list=FOOD_DB.filter(f=>!q||f.n.includes(q)||f.c.includes(q)).slice(0,40);
+    listEl.innerHTML=list.map(f=>`<div class="si" data-pick="${f.n}"><div><b>${f.n}</b><br><span style="color:var(--ink3);font-size:10.5px">${f.c} · ${f.s}</span></div><span>${Math.round(f.k)} kcal/100g</span></div>`).join('')||'<div class="empty">没找到，换个词试试</div>';
+    listEl.querySelectorAll('[data-pick]').forEach(el=>{
+      el.addEventListener('click',()=>{
+        picked=FOOD_MAP[el.dataset.pick];
+        listEl.querySelectorAll('.si').forEach(x=>x.style.background='');
+        el.style.background='var(--accent-soft)';
+        mask.querySelector('#sg').focus();
+      });
+    });
+  }
+  input.addEventListener('input',draw);
+  draw();
+  mask.addEventListener('click',ev=>{
+    if(ev.target===mask||ev.target.closest('[data-cancel]')) mask.remove();
+    if(ev.target.closest('[data-ok]')){
+      if(!picked){ toast('先选一个食物'); return; }
+      const g=parseFloat(mask.querySelector('#sg').value);
+      if(!(g>0)){ toast('克数要大于 0'); return; }
+      addToMeal(mealName,picked,g);
+      mask.remove();
+    }
+  });
+}
+function addToMeal(mealName,f,g){
+  const rec=D.logs[today()]||(D.logs[today()]={});
+  if(!rec[D.mode]) rec[D.mode]=[];
+  let m=rec[D.mode].find(x=>x.meal===mealName);
+  if(!m){ m={meal:mealName,items:[]}; rec[D.mode].push(m); }
+  m.items.push({name:f.n,g, k:f.k,p:f.p,ch:f.ch,f:f.f});
+  save(); renderToday(); renderLog(); toast('已记入'+mealName);
+}
+
+/* 快速添加（记录页） */
+document.getElementById('btnQuickAdd').addEventListener('click',()=>{
+  const meals=MEALS[D.mode].map(m=>m.k);
+  const mask=document.createElement('div'); mask.className='mask';
+  mask.innerHTML=`<div class="sheet"><h3>加一样食物</h3>
+    <div class="field"><label>哪一餐</label><select id="q-meal">${meals.map(m=>`<option>${m}</option>`).join('')}</select></div>
+    <div class="field"><label>食物</label><input id="q-name" placeholder="搜，如 米饭"><div id="q-sug" style="margin-top:6px"></div></div>
+    <div class="field"><label>克数（g）</label><input id="q-g" type="number" value="100"></div>
+    <div class="sheet-actions"><button class="btn btn-ghost" data-cancel>取消</button><button class="btn btn-accent" data-ok>添加</button></div>
+  </div>`;
+  document.body.appendChild(mask);
+  let picked=null;
+  const nameEl=mask.querySelector('#q-name'), sug=mask.querySelector('#q-sug');
+  nameEl.addEventListener('input',()=>{
+    const q=nameEl.value.trim();
+    if(!q){ sug.innerHTML=''; return; }
+    const list=FOOD_DB.filter(f=>f.n.includes(q)).slice(0,6);
+    sug.innerHTML=list.map(f=>`<button class="food-chip" data-p="${f.n}" style="margin:2px 4px 0 0">${f.n} <b>${Math.round(f.k)}</b></button>`).join('');
+    sug.querySelectorAll('[data-p]').forEach(b=>b.addEventListener('click',()=>{
+      picked=FOOD_MAP[b.dataset.p]; nameEl.value=picked.n; sug.innerHTML='';
+    }));
+  });
+  mask.addEventListener('click',ev=>{
+    if(ev.target===mask||ev.target.closest('[data-cancel]')) mask.remove();
+    if(ev.target.closest('[data-ok]')){
+      const g=parseFloat(mask.querySelector('#q-g').value);
+      if(!picked){ toast('先从候选里点一个'); return; }
+      if(!(g>0)){ toast('克数要大于 0'); return; }
+      addToMeal(mask.querySelector('#q-meal').value,picked,g);
+      mask.remove();
+    }
+  });
+});
+
+/* 体重 */
+document.getElementById('weightInput').addEventListener('change',e=>{
+  const v=parseFloat(e.target.value);
+  if(v>0){ D.weight=v; save(); renderMe(); toast('体重已记录'); }
+});
+
+/* 说明 */
+document.getElementById('btnInfo').addEventListener('click',()=>{
+  sheet('使用说明',`<div style="font-size:13.5px;line-height:1.9;color:var(--ink2)">
+    <p><b>两套档位</b>：训练日 2400 大卡分四餐，休息日 2000 大卡分三餐，蛋白都按 135g 算。</p>
+    <p><b>推荐搭配</b>：按每餐目标热量自动配主食+蛋白+蔬菜，点「换一套」换一组。</p>
+    <p><b>录入</b>：从食物库搜，填克数，自动换算热量和三大营养素；吃超了后面餐次的目标会跟着变。</p>
+    <p><b>食物库</b>：641 种，来源标注在每条底部，成品餐是拆解估算。</p>
+    <p><b>数据</b>：本机保存，换设备前导出 JSON。</p>
+  </div>`,()=>{},'知道了');
+});
+
+function sheet(title,body,onOk,okText){
+  const mask=document.createElement('div'); mask.className='mask';
+  mask.innerHTML=`<div class="sheet"><h3>${title}</h3>${body}
+    <div class="sheet-actions"><button class="btn btn-ghost" data-cancel>取消</button>
+    <button class="btn btn-accent" data-ok>${okText||'保存'}</button></div></div>`;
+  document.body.appendChild(mask);
+  mask.addEventListener('click',ev=>{
+    if(ev.target===mask||ev.target.closest('[data-cancel]')) mask.remove();
+    if(ev.target.closest('[data-ok]')){ const r=onOk(mask); if(r!==false) mask.remove(); }
+  });
+}
+
+function resetDemo(){
+  if(!confirm('会用新的随机演示数据覆盖当前内容，继续吗？')) return;
+  D=demoData(); save(); renderAll(); toast('已重置');
+}
+document.getElementById('btnReset').addEventListener('click',resetDemo);
+document.getElementById('btnReset2').addEventListener('click',resetDemo);
+document.getElementById('btnExport').addEventListener('click',()=>{
+  const blob=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='饮食配餐工作台-数据-'+today()+'.json'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000); toast('已导出');
+});
+document.getElementById('btnImport').addEventListener('click',()=>document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change',ev=>{
+  const f=ev.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{ const d=JSON.parse(r.result); if(!d||!d.logs) throw 0; D=d; save(); renderAll(); toast('导入成功'); }
+    catch(e){ toast('文件读不出来'); }
+  };
+  r.readAsText(f); ev.target.value='';
+});
+
+renderAll();
+</script>
+</body>
+</html>
